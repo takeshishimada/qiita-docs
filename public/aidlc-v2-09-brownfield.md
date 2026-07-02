@@ -6,7 +6,7 @@ tags:
   - AIDLC
   - AI-DLC
 private: false
-updated_at: '2026-06-30T00:51:18+09:00'
+updated_at: '2026-07-02T11:23:26+09:00'
 id: 0a22742c273797429aee
 organization_url_name: null
 slide: false
@@ -15,7 +15,7 @@ ignorePublish: false
 
 > **本記事の位置づけ** — 本記事は、`awslabs/aidlc-workflows` リポジトリの規範ルールおよび利用ガイドを素材として、筆者が AI を活用して読み解き、まとめた解釈です。AWS が公式に発表した方法論ではなく、一次資料の翻訳・要約でもありません。
 >
-> **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/expensivegasprices/items/2daa87896110603252ad) シリーズの一部です。
+> **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
 > **参照した版** — **Claude Code 実装**を対象に、2026 年 6 月時点の v2.1.3（コミット `c95070e`、`core/`）を参照しています。Kiro・Codex 実装は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
@@ -57,7 +57,7 @@ flowchart TD
     D --> F[conditional_on: brownfield の<br/>成果物が下流へ流れる]
 ```
 
-この条件分岐は「プロジェクトタイプで切り替わる」もので、案件の重さに応じて工程を出し入れするスコープとは別軸の制御です。スコープによる工程の選択は別記事「[スコープ](https://qiita.com/expensivegasprices/items/c232fb2e994e7b567a5c)」で扱います。
+この条件分岐は「プロジェクトタイプで切り替わる」もので、案件の重さに応じて工程を出し入れするスコープとは別軸の制御です。スコープによる工程の選択は別記事「[スコープ](https://qiita.com/takeshishimada/items/c232fb2e994e7b567a5c)」で扱います。
 
 ## ① 既存理解の再構築
 
@@ -87,7 +87,7 @@ flowchart TD
 
 作るのは9件ですが、下流に流れるのは8件です。timestamp はメタ情報なので下流ステージは消費せず、後続の practices-discovery などが受け取るのは「reverse-engineering の8成果物」です。下流はこれらを `conditional_on: brownfield` で受け取り、ブラウンフィールドのときだけ既存理解を踏まえた要件・設計へ進みます。
 
-なお、これら9成果物は、ほかの成果物と違って、intent（作業の記録単位）をまたいで共有される空間レベルの codekb（コードの知識ベース、`aidlc/spaces/<space>/codekb/<repo>/`）に住みます。成果物レイアウトの唯一の例外にあたるこの扱いは、別記事「[成果物の流れ](https://qiita.com/expensivegasprices/items/46feb553f907f9eedd14)」で扱います。reverse-engineering が工程カタログ上のどこに位置するかは別記事「[工程とエージェント](https://qiita.com/expensivegasprices/items/418d7b9e17192e8add85)」で扱います。
+なお、これら9成果物は、ほかの成果物と違って、intent（作業の記録単位）をまたいで共有される空間レベルの codekb（コードの知識ベース、`aidlc/spaces/<space>/codekb/<repo>/`）に住みます。成果物レイアウトの唯一の例外にあたるこの扱いは、別記事「[成果物の流れ](https://qiita.com/takeshishimada/items/46feb553f907f9eedd14)」で扱います。reverse-engineering が工程カタログ上のどこに位置するかは別記事「[工程とエージェント](https://qiita.com/takeshishimada/items/418d7b9e17192e8add85)」で扱います。
 
 ## ② 既存コード改変のセーフガード
 
@@ -114,7 +114,7 @@ flowchart TD
 
 **Test Baseline Protocol**（テスト基準プロトコル）は、どんな変更よりも先にテストスイート全体を走らせ、総数・成功・失敗・スキップ・カバレッジを記録します。コード生成後に再実行し、新たな失敗を今回の変更が入れた回帰とみなして、先に進む前に直します。
 
-この2つは「変更前のスナップショット」を取るセーフガードです。Blast Radius が空間的な影響範囲を、Test Baseline が時間的な前後比較を記録し、改変の影響を「どこまで広がるか」と「壊していないか」の両面から確認します。なお、Blast Radius という観点は設計レビュアーのコア質問にも登場しますが、その詳細は別記事「[レビュアー](https://qiita.com/expensivegasprices/items/624d83e946e86e4b1553)」で扱います。
+この2つは「変更前のスナップショット」を取るセーフガードです。Blast Radius が空間的な影響範囲を、Test Baseline が時間的な前後比較を記録し、改変の影響を「どこまで広がるか」と「壊していないか」の両面から確認します。なお、Blast Radius という観点は設計レビュアーのコア質問にも登場しますが、その詳細は別記事「[レビュアー](https://qiita.com/takeshishimada/private/624d83e946e86e4b1553)」で扱います。
 
 ## 二本柱としての全体像
 
@@ -148,6 +148,6 @@ flowchart LR
 
 ## 関連記事
 
-**前の記事**: [ウォーキングスケルトン](https://qiita.com/expensivegasprices/items/7a24030b9d8905f379ed)
-**次の記事**: [承認ゲート](https://qiita.com/expensivegasprices/items/cd6827700443c9987fd7)
-**目次**: [AIで紐解くAI-DLC v2](https://qiita.com/expensivegasprices/items/2daa87896110603252ad)
+**前の記事**: [ウォーキングスケルトン](https://qiita.com/takeshishimada/items/7a24030b9d8905f379ed)
+**次の記事**: [承認ゲート](https://qiita.com/takeshishimada/private/cd6827700443c9987fd7)
+**目次**: [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad)
