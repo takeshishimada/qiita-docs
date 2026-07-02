@@ -5,8 +5,8 @@ tags:
   - ClaudeCode
   - AIDLC
   - AI-DLC
-private: false
-updated_at: '2026-06-30T00:48:04+09:00'
+private: true
+updated_at: '2026-07-02T11:23:26+09:00'
 id: f2f4e426dd542c5b6765
 organization_url_name: null
 slide: false
@@ -15,7 +15,7 @@ ignorePublish: false
 
 > **本記事の位置づけ** — 本記事は、`awslabs/aidlc-workflows` リポジトリの規範ルールおよび利用ガイドを素材として、筆者が AI を活用して読み解き、まとめた解釈です。AWS が公式に発表した方法論ではなく、一次資料の翻訳・要約でもありません。
 >
-> **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/expensivegasprices/items/2daa87896110603252ad) シリーズの一部です。
+> **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
 > **参照した版** — **Claude Code 実装**を対象に、2026 年 6 月時点の v2.1.3（コミット `c95070e`、`core/`）を参照しています。Kiro・Codex 実装は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
@@ -69,7 +69,7 @@ Intent → Requirement → Story → Architecture Component → Code Module → 
 2. **orphan（孤児成果物）** — 設計はあるのに対応する要件がない、上流を持たない成果物
 3. **contradiction（矛盾）** — フェーズ間で出力が食い違っている
 
-なお、成果物が互いにどう連結しているか（slug による参照・1つの成果物に生産者は1つ）という鎖の土台は、別記事「[成果物の流れ](https://qiita.com/expensivegasprices/items/46feb553f907f9eedd14)」で扱います。
+なお、成果物が互いにどう連結しているか（slug による参照・1つの成果物に生産者は1つ）という鎖の土台は、別記事「[成果物の流れ](https://qiita.com/takeshishimada/items/46feb553f907f9eedd14)」で扱います。
 
 ---
 
@@ -82,7 +82,7 @@ Intent → Requirement → Story → Architecture Component → Code Module → 
 | オンデマンド | 人が `/aidlc --status` で随時要求できる |
 | 各ステージ完了時（別機構・軽量） | このステージの出力が前ステージの出力を参照しているかのセルフチェック |
 
-最後の「各ステージ完了時の軽量チェック」はフェーズ境界検証とは別物で、ステージ単位で走る `upstream-coverage` センサーが担います。ステージ定義のフロントマター（ファイル冒頭のメタ情報）に宣言された `consumes:`（消費する上流成果物）が、出力の本文で実際に参照されているかを見る助言です。センサーが成果物の保存時に何を見ているかは、別記事「[センサー](https://qiita.com/expensivegasprices/items/5f8dbb62f25c1a09a257)」で扱います。
+最後の「各ステージ完了時の軽量チェック」はフェーズ境界検証とは別物で、ステージ単位で走る `upstream-coverage` センサーが担います。ステージ定義のフロントマター（ファイル冒頭のメタ情報）に宣言された `consumes:`（消費する上流成果物）が、出力の本文で実際に参照されているかを見る助言です。センサーが成果物の保存時に何を見ているかは、別記事「[センサー](https://qiita.com/takeshishimada/private/5f8dbb62f25c1a09a257)」で扱います。
 
 ---
 
@@ -110,7 +110,7 @@ Intent → Requirement → Story → Architecture Component → Code Module → 
 | センサー | 止めない（助言のみ） | 全センサーが `advisory`。`upstream-coverage` などステージ単位で走り、欠落を報告するが進行は止めない |
 | 承認ゲート | 人が止める | 人が成果物を確認して承認する。フェーズ境界検証の失敗もここに合流する |
 
-フェーズ境界の `PHASE_VERIFIED` はこのどちらでもなく、境界を越えた事実を記録する監査マーカーです。検証の判定は規約に沿ってコンダクターが担い、失敗時は承認ゲートが受け止めます。承認ゲートの差し戻しや「現状で承認」の仕組みは、別記事「[承認ゲート](https://qiita.com/expensivegasprices/items/cd6827700443c9987fd7)」で扱います。この検証が現実にどこまで効くか（LLM 規約に委ねた判定の限界）は、別記事「[限界と注意点](https://qiita.com/expensivegasprices/items/7b7582e2dfac5d942eda)」で扱います。
+フェーズ境界の `PHASE_VERIFIED` はこのどちらでもなく、境界を越えた事実を記録する監査マーカーです。検証の判定は規約に沿ってコンダクターが担い、失敗時は承認ゲートが受け止めます。承認ゲートの差し戻しや「現状で承認」の仕組みは、別記事「[承認ゲート](https://qiita.com/takeshishimada/private/cd6827700443c9987fd7)」で扱います。この検証が現実にどこまで効くか（LLM 規約に委ねた判定の限界）は、別記事「[限界と注意点](https://qiita.com/takeshishimada/private/7b7582e2dfac5d942eda)」で扱います。
 
 ---
 
@@ -151,6 +151,6 @@ flowchart TD
 
 ## 関連記事
 
-**前の記事**: [レビュアー](https://qiita.com/expensivegasprices/items/624d83e946e86e4b1553)
-**次の記事**: [ルールとナレッジ](https://qiita.com/expensivegasprices/items/33f3b2b401d4d3c1c266)
-**目次**: [AIで紐解くAI-DLC v2](https://qiita.com/expensivegasprices/items/2daa87896110603252ad)
+**前の記事**: [レビュアー](https://qiita.com/takeshishimada/private/624d83e946e86e4b1553)
+**次の記事**: [ルールとナレッジ](https://qiita.com/takeshishimada/private/33f3b2b401d4d3c1c266)
+**目次**: [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad)

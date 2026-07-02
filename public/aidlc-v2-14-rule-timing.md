@@ -5,8 +5,8 @@ tags:
   - ClaudeCode
   - AIDLC
   - AI-DLC
-private: false
-updated_at: '2026-06-30T00:48:04+09:00'
+private: true
+updated_at: '2026-07-02T11:23:26+09:00'
 id: 33f3b2b401d4d3c1c266
 organization_url_name: null
 slide: false
@@ -15,7 +15,7 @@ ignorePublish: false
 
 > **本記事の位置づけ** — 本記事は、`awslabs/aidlc-workflows` リポジトリの規範ルールおよび利用ガイドを素材として、筆者が AI を活用して読み解き、まとめた解釈です。AWS が公式に発表した方法論ではなく、一次資料の翻訳・要約でもありません。
 >
-> **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/expensivegasprices/items/2daa87896110603252ad) シリーズの一部です。
+> **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
 > **参照した版** — **Claude Code 実装**を対象に、2026 年 6 月時点の v2.1.3（コミット `c95070e`、`core/`）を参照しています。Kiro・Codex 実装は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
@@ -100,9 +100,9 @@ const SCOPE_PRIORITY: Record<string, number> = {
 ]
 ```
 
-ルール階層は org→team→project→phase の4層です。確定した学習は独立ファイルではなく `team.md` ／ `project.md` に **practice（確定した学習をルールとして書いた項目）として直接書かれる**ため、learnings 用の層は要りません。学習でルールが増えていく仕組みは、別記事「[学習ループ](https://qiita.com/expensivegasprices/items/dd7f3d034ee2c137cff5)」で扱います。
+ルール階層は org→team→project→phase の4層です。確定した学習は独立ファイルではなく `team.md` ／ `project.md` に **practice（確定した学習をルールとして書いた項目）として直接書かれる**ため、learnings 用の層は要りません。学習でルールが増えていく仕組みは、別記事「[学習ループ](https://qiita.com/takeshishimada/private/dd7f3d034ee2c137cff5)」で扱います。
 
-ここで固定されるのは「**どのファイルを読むか**」（パス）であって、「その中身」ではありません。中身は実行時にそのパスから読まれます。なお、解決済みのルールを `run-stage` 指示に載せてエージェントへ届ける機構そのものは、別記事「[進行の中核](https://qiita.com/expensivegasprices/items/c3ac7c2223e5c7020d82)」で扱います。
+ここで固定されるのは「**どのファイルを読むか**」（パス）であって、「その中身」ではありません。中身は実行時にそのパスから読まれます。なお、解決済みのルールを `run-stage` 指示に載せてエージェントへ届ける機構そのものは、別記事「[進行の中核](https://qiita.com/takeshishimada/items/c3ac7c2223e5c7020d82)」で扱います。
 
 ## 本文を読むタイミングの未確定
 
@@ -110,7 +110,7 @@ const SCOPE_PRIORITY: Record<string, number> = {
 
 一方、解決済みの**本文を読み直す正確な瞬間**については、AI-DLC v2 は明確な裁定を持っていません。解説ドキュメント側の記述が、ワークフロー開始時・セッション開始時・各ステージと揺れています。ただしこれは実装ではなくドキュメント間の不整合なので、本記事では断定しません（後述の補足）。
 
-それでも実害は出にくい構造です。この曖昧さが表面化しうるのは、ワークフローの途中でルールが書き換わる場面です。ところが学習は「いま直す」ためでなく「次に繰り返さない」ために設計されていて、確定した学習が効くのは次のワークフローからです。だから同一ワークフロー内で本文がいつ読み直されても、その実行の結果はほとんど変わりません。学習をいつ・どこに反映するかは、別記事「[学習ループ](https://qiita.com/expensivegasprices/items/dd7f3d034ee2c137cff5)」で扱います。
+それでも実害は出にくい構造です。この曖昧さが表面化しうるのは、ワークフローの途中でルールが書き換わる場面です。ところが学習は「いま直す」ためでなく「次に繰り返さない」ために設計されていて、確定した学習が効くのは次のワークフローからです。だから同一ワークフロー内で本文がいつ読み直されても、その実行の結果はほとんど変わりません。学習をいつ・どこに反映するかは、別記事「[学習ループ](https://qiita.com/takeshishimada/private/dd7f3d034ee2c137cff5)」で扱います。
 
 ## 全体像
 
@@ -140,6 +140,6 @@ flowchart LR
 
 ## 関連記事
 
-**前の記事**: [フェーズ境界検証](https://qiita.com/expensivegasprices/items/f2f4e426dd542c5b6765)
-**次の記事**: [学習ループ](https://qiita.com/expensivegasprices/items/dd7f3d034ee2c137cff5)
-**目次**: [AIで紐解くAI-DLC v2](https://qiita.com/expensivegasprices/items/2daa87896110603252ad)
+**前の記事**: [フェーズ境界検証](https://qiita.com/takeshishimada/private/f2f4e426dd542c5b6765)
+**次の記事**: [学習ループ](https://qiita.com/takeshishimada/private/dd7f3d034ee2c137cff5)
+**目次**: [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad)

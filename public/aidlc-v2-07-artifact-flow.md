@@ -6,7 +6,7 @@ tags:
   - AIDLC
   - AI-DLC
 private: false
-updated_at: '2026-06-30T00:51:12+09:00'
+updated_at: '2026-07-02T11:23:26+09:00'
 id: 46feb553f907f9eedd14
 organization_url_name: null
 slide: false
@@ -15,7 +15,7 @@ ignorePublish: false
 
 > **本記事の位置づけ** — 本記事は、`awslabs/aidlc-workflows` リポジトリの規範ルールおよび利用ガイドを素材として、筆者が AI を活用して読み解き、まとめた解釈です。AWS が公式に発表した方法論ではなく、一次資料の翻訳・要約でもありません。
 >
-> **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/expensivegasprices/items/2daa87896110603252ad) シリーズの一部です。
+> **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
 > **参照した版** — **Claude Code 実装**を対象に、2026 年 6 月時点の v2.1.3（コミット `c95070e`、`core/`）を参照しています。Kiro・Codex 実装は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
@@ -105,17 +105,17 @@ per-unit かどうかは、消費するステージではなく**所有者（生
 
 なお、各ステージの `.md` が持つ `outputs:` フロントマターは、ランタイムでは**非 load-bearing**（実行時には参照されない＝パス契約ではなく説明用）です。エンジンは `outputs:` を読まず、`produces[]` の名前を記録ディレクトリへ解決します。`outputs:` はパス契約ではなくドキュメントだ、と core 自身が明記しています。解説 docs に残る旧 `aidlc-docs/...` 形式の配置説明と食い違う場合は、実装を正としてください。
 
-> 作業単位ごとに run-stage を発行するあいだ、ステージの承認ゲートは全作業単位が揃うまで抑止されます。最後の作業単位の成果物が出そろった再入で初めて、ステージ単一の承認ゲートが1回提示されます。早期承認の拒否を含むこの挙動は、別記事「[承認ゲート](https://qiita.com/expensivegasprices/items/cd6827700443c9987fd7)」で扱います。
+> 作業単位ごとに run-stage を発行するあいだ、ステージの承認ゲートは全作業単位が揃うまで抑止されます。最後の作業単位の成果物が出そろった再入で初めて、ステージ単一の承認ゲートが1回提示されます。早期承認の拒否を含むこの挙動は、別記事「[承認ゲート](https://qiita.com/takeshishimada/private/cd6827700443c9987fd7)」で扱います。
 
 ## リバースエンジニアリングの例外
 
-「消費される成果物は生産者のディレクトリに住む」という規約には、ただ1つの例外があります。リバースエンジニアリングが作る9つの成果物だけは、記録ディレクトリではなく**空間レベルの codekb** `aidlc/spaces/<space>/codekb/<repo>/` に住みます。記録ディレクトリは1つの intent に紐づくのに対し、codekb は intent をまたいで永続するコードベースの知識ベースだからです。既存コードを下敷きにするときだけ消費される条件付き連結（`conditional_on: brownfield`）を含め、ブラウンフィールド固有の成果物群は別記事「[ブラウンフィールド](https://qiita.com/expensivegasprices/items/0a22742c273797429aee)」で扱います。
+「消費される成果物は生産者のディレクトリに住む」という規約には、ただ1つの例外があります。リバースエンジニアリングが作る9つの成果物だけは、記録ディレクトリではなく**空間レベルの codekb** `aidlc/spaces/<space>/codekb/<repo>/` に住みます。記録ディレクトリは1つの intent に紐づくのに対し、codekb は intent をまたいで永続するコードベースの知識ベースだからです。既存コードを下敷きにするときだけ消費される条件付き連結（`conditional_on: brownfield`）を含め、ブラウンフィールド固有の成果物群は別記事「[ブラウンフィールド](https://qiita.com/takeshishimada/items/0a22742c273797429aee)」で扱います。
 
 ## ここまでの連結と、その先の検証
 
-ここまで組んだ連なり（名指しの連結と生産者ディレクトリへの配置）は、フェーズの境界で「鎖」として検証されます。意図 → 要件 → ストーリー → 設計 → コード → テストが切れ目なくつながっているか。ただし、その**検証**自体は別記事「[フェーズ境界検証](https://qiita.com/expensivegasprices/items/f2f4e426dd542c5b6765)」で扱います。本記事が集中したのは、鎖の**素材**、すなわち成果物がどう作られ、どこに置かれ、どう参照されるかでした。素材が正しく連結されているからこそ、境界で鎖として検証できます。
+ここまで組んだ連なり（名指しの連結と生産者ディレクトリへの配置）は、フェーズの境界で「鎖」として検証されます。意図 → 要件 → ストーリー → 設計 → コード → テストが切れ目なくつながっているか。ただし、その**検証**自体は別記事「[フェーズ境界検証](https://qiita.com/takeshishimada/private/f2f4e426dd542c5b6765)」で扱います。本記事が集中したのは、鎖の**素材**、すなわち成果物がどう作られ、どこに置かれ、どう参照されるかでした。素材が正しく連結されているからこそ、境界で鎖として検証できます。
 
-名前からパスへの解決は、すべて決定論的なエンジンの仕事で、コンダクター（LLM）に再導出させません。`aidlc-orchestrate.ts` のコメントいわく、パスの組み立ては教科書的なツールの仕事であり、それを LLM に回すのは設計の主旨そのものを反転させてしまう。本記事が扱ったのはその解決の**結果**＝何がどこに住むかの規約で、解決の機構そのもの（問い合わせ・指示・報告）は別記事「[進行の中核](https://qiita.com/expensivegasprices/items/c3ac7c2223e5c7020d82)」で扱います。連結を保つ働きは保存のたびにもあり、上流成果物が本文で実際に参照されているかを助言として拾う仕組みは別記事「[センサー](https://qiita.com/expensivegasprices/items/5f8dbb62f25c1a09a257)」で、成果物の作成・更新の記録は別記事「[状態と監査](https://qiita.com/expensivegasprices/items/72234648bb4400cedf53)」で扱います。
+名前からパスへの解決は、すべて決定論的なエンジンの仕事で、コンダクター（LLM）に再導出させません。`aidlc-orchestrate.ts` のコメントいわく、パスの組み立ては教科書的なツールの仕事であり、それを LLM に回すのは設計の主旨そのものを反転させてしまう。本記事が扱ったのはその解決の**結果**＝何がどこに住むかの規約で、解決の機構そのもの（問い合わせ・指示・報告）は別記事「[進行の中核](https://qiita.com/takeshishimada/items/c3ac7c2223e5c7020d82)」で扱います。連結を保つ働きは保存のたびにもあり、上流成果物が本文で実際に参照されているかを助言として拾う仕組みは別記事「[センサー](https://qiita.com/takeshishimada/private/5f8dbb62f25c1a09a257)」で、成果物の作成・更新の記録は別記事「[状態と監査](https://qiita.com/takeshishimada/private/72234648bb4400cedf53)」で扱います。
 
 ## 参照元
 
@@ -135,6 +135,6 @@ per-unit かどうかは、消費するステージではなく**所有者（生
 
 ## 関連記事
 
-**前の記事**: [深さ](https://qiita.com/expensivegasprices/items/f2246466b9e3bdef570b)
-**次の記事**: [ウォーキングスケルトン](https://qiita.com/expensivegasprices/items/7a24030b9d8905f379ed)
-**目次**: [AIで紐解くAI-DLC v2](https://qiita.com/expensivegasprices/items/2daa87896110603252ad)
+**前の記事**: [深さ](https://qiita.com/takeshishimada/items/f2246466b9e3bdef570b)
+**次の記事**: [ウォーキングスケルトン](https://qiita.com/takeshishimada/items/7a24030b9d8905f379ed)
+**目次**: [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad)
