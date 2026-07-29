@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：プラグイン機構
+title: AIで紐解くAWS AI-DLC v2：プラグイン機構
 tags:
   - AI
   - ClaudeCode

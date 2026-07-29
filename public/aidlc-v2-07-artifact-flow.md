@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：成果物の流れ
+title: AIで紐解くAWS AI-DLC v2：成果物の流れ
 tags:
   - AI
   - ClaudeCode

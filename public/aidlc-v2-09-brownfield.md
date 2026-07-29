@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：ブラウンフィールド
+title: AIで紐解くAWS AI-DLC v2：ブラウンフィールド
 tags:
   - AI
   - ClaudeCode

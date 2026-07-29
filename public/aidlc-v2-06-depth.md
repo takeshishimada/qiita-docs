@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：深さ
+title: AIで紐解くAWS AI-DLC v2：深さ
 tags:
   - AI
   - ClaudeCode

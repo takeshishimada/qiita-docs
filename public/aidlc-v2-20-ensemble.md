@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：協働のトポロジー
+title: AIで紐解くAWS AI-DLC v2：協働のトポロジー
 tags:
   - AI
   - ClaudeCode

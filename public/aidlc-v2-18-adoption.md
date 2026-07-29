@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：導入判断
+title: AIで紐解くAWS AI-DLC v2：導入判断
 tags:
   - AI
   - ClaudeCode

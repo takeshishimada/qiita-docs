@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：フェーズ境界検証
+title: AIで紐解くAWS AI-DLC v2：フェーズ境界検証
 tags:
   - AI
   - ClaudeCode

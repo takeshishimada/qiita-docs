@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：限界と注意点
+title: AIで紐解くAWS AI-DLC v2：限界と注意点
 tags:
   - AI
   - ClaudeCode

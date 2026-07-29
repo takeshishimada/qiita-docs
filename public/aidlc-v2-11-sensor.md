@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：センサー
+title: AIで紐解くAWS AI-DLC v2：センサー
 tags:
   - AI
   - ClaudeCode

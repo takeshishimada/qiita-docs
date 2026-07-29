@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：状態と監査
+title: AIで紐解くAWS AI-DLC v2：状態と監査
 tags:
   - AI
   - ClaudeCode

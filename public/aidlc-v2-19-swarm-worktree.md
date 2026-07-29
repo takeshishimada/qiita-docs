@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：並列実行
+title: AIで紐解くAWS AI-DLC v2：並列実行
 tags:
   - AI
   - ClaudeCode

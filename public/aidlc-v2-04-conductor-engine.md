@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：進行の中核
+title: AIで紐解くAWS AI-DLC v2：進行の中核
 tags:
   - AI
   - ClaudeCode

@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：ウォーキングスケルトン
+title: AIで紐解くAWS AI-DLC v2：ウォーキングスケルトン
 tags:
   - AI
   - ClaudeCode

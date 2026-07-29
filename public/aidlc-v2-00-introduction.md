@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：はじめに
+title: AIで紐解くAWS AI-DLC v2：はじめに
 tags:
   - AI
   - ClaudeCode
