@@ -1,11 +1,11 @@
 ---
-title: AIで紐解くAI-DLC v2：ルールとナレッジ
+title: AIで紐解くAWS AI-DLC v2：ルールとナレッジ
 tags:
   - AI
   - ClaudeCode
   - AIDLC
   - AI-DLC
-private: true
+private: false
 updated_at: '2026-07-02T11:26:35+09:00'
 id: 33f3b2b401d4d3c1c266
 organization_url_name: null
@@ -17,7 +17,7 @@ ignorePublish: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 6 月時点の v2.1.3（コミット `c95070e`、`core/`）を参照しています。Kiro・Codex 実装は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -61,19 +61,20 @@ export interface RunStageDirective {
 
 ```
 ### Knowledge loading order (for all stage types):
-1. {{HARNESS_DIR}}/rules/ — organization and project guardrails (always)
+1. aidlc/spaces/<active-space>/memory/{org,team,project}.md — active-space method
+   and guardrails (always; most-specific non-empty statement wins)
 2. {{HARNESS_DIR}}/knowledge/aidlc-shared/ — shared methodology principles
 3. {{HARNESS_DIR}}/knowledge/[agent-name]/ — agent-specific methodology
-4. aidlc/knowledge/aidlc-shared/ — team shared knowledge (if exists)
-5. aidlc/knowledge/[agent-name]/ — team agent-specific knowledge (if exists)
+4. aidlc/spaces/<active-space>/knowledge/aidlc-shared/ — team shared knowledge (if exists)
+5. aidlc/spaces/<active-space>/knowledge/[agent-name]/ — team agent-specific knowledge (if exists)
 6. Prior stage artifacts as required by the current stage
 ```
 
 — `core/aidlc-common/protocols/stage-protocol.md` §5
 
-ナレッジの本体は **2〜5段目**です。横断のナレッジ（`aidlc-shared/`、9本）と、エージェント別の方法論（13体それぞれに1〜7本。例：アーキテクトの `ddd-patterns`、DevSecOps の `threat-modelling-stride`）が並びます。4・5段目の `aidlc/knowledge/` は、チームが独自のナレッジを加える拡張点です（存在すれば読まれる。空・自由形式で出荷され、チームが必要に応じて埋めます）。
+ナレッジの本体は **2〜5段目**です。横断のナレッジ（`aidlc-shared/`、9本）と、エージェント別の方法論（14体それぞれに1〜7本。例：アーキテクトの `ddd-patterns`、DevSecOps の `threat-modelling-stride`）が並びます。4・5段目の `aidlc/spaces/<active-space>/knowledge/` は、チームが独自のナレッジを加える拡張点です（存在すれば読まれる。空・自由形式で出荷され、チームが必要に応じて埋めます）。
 
-1段目に `{{HARNESS_DIR}}/rules/` が現れるのは、push で届くルールを実行側がここでも参照する規定だからです。ルールは指示に同梱されたうえで、§5 でも各ステージが読みます。
+1段目だけはナレッジではなくルールそのものです。push で届くルールを、実行側が §5 でも読む規定になっています。ルールは指示に同梱されたうえで、各ステージが自分でも読みにいきます。
 
 ## 「どれを読むか」のコンパイル時確定
 
@@ -100,7 +101,7 @@ const SCOPE_PRIORITY: Record<string, number> = {
 ]
 ```
 
-ルール階層は org→team→project→phase の4層です。確定した学習は独立ファイルではなく `team.md` ／ `project.md` に **practice（確定した学習をルールとして書いた項目）として直接書かれる**ため、learnings 用の層は要りません。学習でルールが増えていく仕組みは、別記事「[学習ループ](https://qiita.com/takeshishimada/private/dd7f3d034ee2c137cff5)」で扱います。
+ルール階層は org→team→project→phase の4層です。確定した学習は独立ファイルではなく `team.md` ／ `project.md` に **practice（確定した学習をルールとして書いた項目）として直接書かれる**ため、learnings 用の層は要りません。学習でルールが増えていく仕組みは、別記事「[学習ループ](https://qiita.com/takeshishimada/items/dd7f3d034ee2c137cff5)」で扱います。
 
 ここで固定されるのは「**どのファイルを読むか**」（パス）であって、「その中身」ではありません。中身は実行時にそのパスから読まれます。なお、解決済みのルールを `run-stage` 指示に載せてエージェントへ届ける機構そのものは、別記事「[進行の中核](https://qiita.com/takeshishimada/items/c3ac7c2223e5c7020d82)」で扱います。
 
@@ -110,7 +111,7 @@ const SCOPE_PRIORITY: Record<string, number> = {
 
 一方、解決済みの**本文を読み直す正確な瞬間**については、AI-DLC v2 は明確な裁定を持っていません。解説ドキュメント側の記述が、ワークフロー開始時・セッション開始時・各ステージと揺れています。ただしこれは実装ではなくドキュメント間の不整合なので、本記事では断定しません（後述の補足）。
 
-それでも実害は出にくい構造です。この曖昧さが表面化しうるのは、ワークフローの途中でルールが書き換わる場面です。ところが学習は「いま直す」ためでなく「次に繰り返さない」ために設計されていて、確定した学習が効くのは次のワークフローからです。だから同一ワークフロー内で本文がいつ読み直されても、その実行の結果はほとんど変わりません。学習をいつ・どこに反映するかは、別記事「[学習ループ](https://qiita.com/takeshishimada/private/dd7f3d034ee2c137cff5)」で扱います。
+それでも実害は出にくい構造です。この曖昧さが表面化しうるのは、ワークフローの途中でルールが書き換わる場面です。ところが学習は「いま直す」ためでなく「次に繰り返さない」ために設計されていて、確定した学習が効くのは次のワークフローからです。だから同一ワークフロー内で本文がいつ読み直されても、その実行の結果はほとんど変わりません。学習をいつ・どこに反映するかは、別記事「[学習ループ](https://qiita.com/takeshishimada/items/dd7f3d034ee2c137cff5)」で扱います。
 
 ## 全体像
 
@@ -127,12 +128,12 @@ flowchart LR
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/tools/aidlc-directive.ts) | `RunStageDirective` に `rules_in_context` が載り、ナレッジに当たるフィールドは無い（push の根拠） |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/protocols/stage-protocol.md) | §5 ナレッジ読み込み順（1段目がルール、2〜5段目がナレッジ、全ステージで always）。pull 側の機構 |
-| [`core/tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/tools/aidlc-graph.ts) | `SCOPE_PRIORITY` による `org→team→project→phase` の4層解決、`rules_in_context` のコンパイル時固定 |
-| [`core/memory/`](https://github.com/awslabs/aidlc-workflows/tree/v2.1.3/core/memory) | ルールファイル本体（`org.md` / `team.md` / `project.md` ＋ `phases/<phase>.md`） |
-| [`core/knowledge/`](https://github.com/awslabs/aidlc-workflows/tree/v2.1.3/core/knowledge) | pull されるナレッジの本体（横断 `aidlc-shared/` 9本＋エージェント別13体×1〜7本） |
-| [`core/tools/aidlc-learnings.ts`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/tools/aidlc-learnings.ts) | 確定学習を practice として `team.md` ／ `project.md` に追記（4層が増えない理由） |
+| [`core/tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-directive.ts) | `RunStageDirective` に `rules_in_context` が載り、ナレッジに当たるフィールドは無い（push の根拠） |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol.md) | §5 ナレッジ読み込み順（1段目がルール、2〜5段目がナレッジ、全ステージで always）。pull 側の機構 |
+| [`core/tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-graph.ts) | `SCOPE_PRIORITY` による `org→team→project→phase` の4層解決、`rules_in_context` のコンパイル時固定 |
+| [`core/memory/`](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/memory) | ルールファイル本体（`org.md` / `team.md` / `project.md` ＋ `phases/<phase>.md`） |
+| [`core/knowledge/`](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/knowledge) | pull されるナレッジの本体（横断 `aidlc-shared/` 9本＋エージェント別14体×1〜7本） |
+| [`core/tools/aidlc-learnings.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-learnings.ts) | 確定学習を practice として `team.md` ／ `project.md` に追記（4層が増えない理由） |
 
 > 補足（読込タイミングの不整合）：解決済みルールの本文を読み直す瞬間について、ハーネス向けの解説ドキュメントは「ワークフロー開始時」「セッション開始時」と互いに違う形で記し、§5 の「各ステージで読む」とも揃いません。加えて、ルールの実体ディレクトリは `memory/`（`aidlc/spaces/<space>/memory/`）ですが、§5 や用語集などハーネス向けの記述は依然 `{{HARNESS_DIR}}/rules/` のままです。いずれも実装（`core/` のコード）ではなくドキュメント側の不整合なので、本記事はコードを正とし、断定の根拠にしていません。
 
@@ -140,6 +141,6 @@ flowchart LR
 
 ## 関連記事
 
-**前の記事**: [フェーズ境界検証](https://qiita.com/takeshishimada/private/f2f4e426dd542c5b6765)
-**次の記事**: [学習ループ](https://qiita.com/takeshishimada/private/dd7f3d034ee2c137cff5)
+**前の記事**: [フェーズ境界検証](https://qiita.com/takeshishimada/items/f2f4e426dd542c5b6765)
+**次の記事**: [学習ループ](https://qiita.com/takeshishimada/items/dd7f3d034ee2c137cff5)
 **目次**: [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad)

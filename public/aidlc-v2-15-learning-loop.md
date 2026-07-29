@@ -1,11 +1,11 @@
 ---
-title: AIで紐解くAI-DLC v2：学習ループ
+title: AIで紐解くAWS AI-DLC v2：学習ループ
 tags:
   - AI
   - ClaudeCode
   - AIDLC
   - AI-DLC
-private: true
+private: false
 updated_at: '2026-07-02T11:26:35+09:00'
 id: dd7f3d034ee2c137cff5
 organization_url_name: null
@@ -17,7 +17,7 @@ ignorePublish: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 6 月時点の v2.1.3（コミット `c95070e`、`core/`）を参照しています。Kiro・Codex 実装は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -46,7 +46,7 @@ AIエージェントに作業を任せると、仕様の曖昧さを埋めたり
 | Tradeoffs | 複数の選択肢から一つ選んだ | 消費側がCRUDのみなので REST を選択 |
 | Open questions | まだ答えが出ていない | 保持期間をコンプライアンスに要確認 |
 
-学習ログはコンダクターが自分で書く数少ないファイルです。状態や監査ログがツール任せで積み上がるのに対し、ここだけはコンダクターが中身を書きます。誰がどのファイルを書くかという書き分けは、別記事「[状態と監査](https://qiita.com/takeshishimada/private/72234648bb4400cedf53)」で扱います。
+学習ログはコンダクターが自分で書く数少ないファイルです。状態や監査ログがツール任せで積み上がるのに対し、ここだけはコンダクターが中身を書きます。誰がどのファイルを書くかという書き分けは、別記事「[状態と監査](https://qiita.com/takeshishimada/items/72234648bb4400cedf53)」で扱います。
 
 ## 学習ゲートの手順
 
@@ -79,7 +79,7 @@ AIエージェントに作業を任せると、仕様の曖昧さを埋めたり
 確定した学習は、次への効かせ方によってルールとセンサーに分かれます。
 
 - **ルール** — 「次からこう判断して」という事前の指示。前述の practice として方法ファイルに積まれ、次回ステージの開始時にコンダクターへ読み込まれます。
-- **センサー** — 「次からこれを満たしているか確かめて」という事後の検証。成果物の保存時に自動で走る助言的なチェックで、機構そのものは別記事「[センサー](https://qiita.com/takeshishimada/private/5f8dbb62f25c1a09a257)」で扱います。
+- **センサー** — 「次からこれを満たしているか確かめて」という事後の検証。成果物の保存時に自動で走る助言的なチェックで、機構そのものは別記事「[センサー](https://qiita.com/takeshishimada/items/5f8dbb62f25c1a09a257)」で扱います。
 
 どちらで活かすかは、コンダクターが候補の性質から提案し、人が確認のうえ決めます。
 
@@ -95,7 +95,7 @@ AIエージェントに作業を任せると、仕様の曖昧さを埋めたり
 
 学習は、設計上「次のワークフローから」効きます。書き込み自体は学習ゲートで即座に行われますが、反映は次回からです。ルールは前述のとおり次回ステージの開始時に読み込まれ、センサーも次のコンパイルから束ねられます。
 
-実行中のワークフローに途中からルールを差し込まないのは、すでに承認したステージの前提が崩れてしまうからです。「書き込みは即座、反映は次回」という規律が、走っているワークフローの安定を支えています。なお、ルールがいつ読み込まれるか（事前同梱のルールと、実行側が自分で読むナレッジの違い）は、別記事「[ルールとナレッジ](https://qiita.com/takeshishimada/private/33f3b2b401d4d3c1c266)」で扱います。
+実行中のワークフローに途中からルールを差し込まないのは、すでに承認したステージの前提が崩れてしまうからです。「書き込みは即座、反映は次回」という規律が、走っているワークフローの安定を支えています。なお、ルールがいつ読み込まれるか（事前同梱のルールと、実行側が自分で読むナレッジの違い）は、別記事「[ルールとナレッジ](https://qiita.com/takeshishimada/items/33f3b2b401d4d3c1c266)」で扱います。
 
 ## 全体像
 
@@ -135,16 +135,16 @@ flowchart TD
 
 | ファイル | 内容 |
 | --- | --- |
-| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/protocols/stage-protocol.md) | §13 学習ゲートの全手順・practice 保存・two-write install |
-| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/conductor.md) | コンダクターの行動規範。`memory.md` への記録責務 |
-| [`tools/aidlc-learnings.ts`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/tools/aidlc-learnings.ts) | 学習ループツール実装（`surface`／`persist` サブコマンド） |
-| [`knowledge/aidlc-shared/memory-template.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/knowledge/aidlc-shared/memory-template.md) | `memory.md` のテンプレート。4カテゴリの定義 |
-| [`core/memory/`](https://github.com/awslabs/aidlc-workflows/tree/v2.1.3/core/memory)（`org.md`／`project.md`／`team.md`） | 矛盾検査の対象と practice の保存先（project／team） |
+| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol.md) | §13 学習ゲートの全手順・practice 保存・two-write install |
+| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/conductor.md) | コンダクターの行動規範。`memory.md` への記録責務 |
+| [`tools/aidlc-learnings.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-learnings.ts) | 学習ループツール実装（`surface`／`persist` サブコマンド） |
+| [`knowledge/aidlc-shared/memory-template.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/knowledge/aidlc-shared/memory-template.md) | `memory.md` のテンプレート。4カテゴリの定義 |
+| [`core/memory/`](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/memory)（`org.md`／`project.md`／`team.md`） | 矛盾検査の対象と practice の保存先（project／team） |
 
 ---
 
 ## 関連記事
 
-**前の記事**: [ルールとナレッジ](https://qiita.com/takeshishimada/private/33f3b2b401d4d3c1c266)
-**次の記事**: [状態と監査](https://qiita.com/takeshishimada/private/72234648bb4400cedf53)
+**前の記事**: [ルールとナレッジ](https://qiita.com/takeshishimada/items/33f3b2b401d4d3c1c266)
+**次の記事**: [状態と監査](https://qiita.com/takeshishimada/items/72234648bb4400cedf53)
 **目次**: [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad)

@@ -1,5 +1,5 @@
 ---
-title: AIで紐解くAI-DLC v2：ブラウンフィールド
+title: AIで紐解くAWS AI-DLC v2：ブラウンフィールド
 tags:
   - AI
   - ClaudeCode
@@ -17,7 +17,7 @@ ignorePublish: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 6 月時点の v2.1.3（コミット `c95070e`、`core/`）を参照しています。Kiro・Codex 実装は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -42,7 +42,11 @@ ignorePublish: false
 
 ブラウンフィールドかどうかは、人が宣言するのではなく決定論的に判定されます。鍵を握るのは状態ファイルの `Project Type` フィールドで、`Greenfield` か `Brownfield` のいずれかが入ります。この1フィールドが、以降の分岐をすべて決めます。決まり方は3段階です。
 
-**ファイルスキャンで判定する。** 初期化フェーズの workspace-detection ステージがファイルシステムをスキャンし、分類します。ソースコードファイル（`.ts`／`.py`／`.java` …）、アプリのフレームワーク設定、アプリ依存を含むパッケージマニフェスト（非 dev 依存のある package.json、requirements.txt …）の**いずれか**があればブラウンフィールド、すべて無ければグリーンフィールドです。README、`.gitignore`、LICENSE、CI 雛形、ハーネスディレクトリ（`.claude/` など）、ワークスペースの記録ツリー `aidlc/` は、あってもブラウンフィールドにはしません。判定基準は「アプリのコードがあるか」の一点です。
+**ファイルスキャンで判定する。** 初期化フェーズの workspace-detection ステージがファイルシステムをスキャンし、分類します。ソースコードファイル（`.ts`／`.py`／`.java` …）、アプリのフレームワーク設定、アプリ依存を含むパッケージマニフェスト（非 dev 依存のある package.json、requirements.txt …）の**いずれか**があればブラウンフィールドです。README、`.gitignore`、LICENSE、CI 雛形、ハーネスディレクトリ（`.claude/` など）、ワークスペースの記録ツリー `aidlc/` は、あってもブラウンフィールドにはしません。判定基準は「アプリのコードがあるか」の一点です。
+
+ただし**直下だけを見て終わりではありません**。直下にどの手がかりも無いときは、**サブディレクトリを1階層だけ見に行きます**。ソースが `backend/` のような入れ子に置かれたプロジェクトを、空だと誤判定しないためです。見つかった場所は `Nested Root` として監査に残ります。
+
+もう1つ、**`.gitmodules` があってサブモジュールの登録が読み取れれば、それだけでブラウンフィールド**です。サブモジュール未取得の状態はディレクトリが空なので、以前はグリーンフィールドと判定され、既存コードの理解がまるごと飛ばされていました。未取得のときは取得を促す警告が出ます（言語の判定は取得するまで不明のままで、そこは正直に不明と報告されます）。
 
 **判定結果でルーティングする。** state-init ステージが判定を受けて、最初の構想ステージを分岐させます。ブラウンフィールドなら reverse-engineering から始め、グリーンフィールドなら reverse-engineering をスキップして requirements-analysis から始めます。
 
@@ -50,8 +54,9 @@ ignorePublish: false
 
 ```mermaid
 flowchart TD
-    A[workspace-detection<br/>ファイルスキャン] -->|アプリのコードあり| B[Project Type = Brownfield]
-    A -->|何も無い| C[Project Type = Greenfield]
+    A[workspace-detection<br/>ファイルスキャン] -->|直下にアプリのコードあり| B[Project Type = Brownfield]
+    A -->|1階層下にあり<br/>または .gitmodules あり| B
+    A -->|どこにも無い| C[Project Type = Greenfield]
     B --> D[state-init<br/>reverse-engineering から開始]
     C --> E[state-init<br/>reverse-engineering をスキップ<br/>requirements-analysis から]
     D --> F[conditional_on: brownfield の<br/>成果物が下流へ流れる]
@@ -85,7 +90,7 @@ flowchart TD
 
 9番目の timestamp は、中身の知識ではなく「この理解はいつ時点のものか」を記録するメタ成果物で、先述の「毎回再実行で鮮度を保つ」運用を支える裏側の仕掛けです。
 
-作るのは9件ですが、下流に流れるのは8件です。timestamp はメタ情報なので下流ステージは消費せず、後続の practices-discovery などが受け取るのは「reverse-engineering の8成果物」です。下流はこれらを `conditional_on: brownfield` で受け取り、ブラウンフィールドのときだけ既存理解を踏まえた要件・設計へ進みます。
+作るのは9件ですが、下流のステージが `consumes` に宣言しているのは7件です。timestamp はメタ情報なので消費されず、`api-documentation` も現状どの下流も宣言していません（作られるが参照されない成果物です）。残る7件を下流は `conditional_on: brownfield` で受け取り、ブラウンフィールドのときだけ既存理解を踏まえた要件・設計へ進みます。
 
 なお、これら9成果物は、ほかの成果物と違って、intent（作業の記録単位）をまたいで共有される空間レベルの codekb（コードの知識ベース、`aidlc/spaces/<space>/codekb/<repo>/`）に住みます。成果物レイアウトの唯一の例外にあたるこの扱いは、別記事「[成果物の流れ](https://qiita.com/takeshishimada/items/46feb553f907f9eedd14)」で扱います。reverse-engineering が工程カタログ上のどこに位置するかは別記事「[工程とエージェント](https://qiita.com/takeshishimada/items/418d7b9e17192e8add85)」で扱います。
 
@@ -114,7 +119,7 @@ flowchart TD
 
 **Test Baseline Protocol**（テスト基準プロトコル）は、どんな変更よりも先にテストスイート全体を走らせ、総数・成功・失敗・スキップ・カバレッジを記録します。コード生成後に再実行し、新たな失敗を今回の変更が入れた回帰とみなして、先に進む前に直します。
 
-この2つは「変更前のスナップショット」を取るセーフガードです。Blast Radius が空間的な影響範囲を、Test Baseline が時間的な前後比較を記録し、改変の影響を「どこまで広がるか」と「壊していないか」の両面から確認します。なお、Blast Radius という観点は設計レビュアーのコア質問にも登場しますが、その詳細は別記事「[レビュアー](https://qiita.com/takeshishimada/private/624d83e946e86e4b1553)」で扱います。
+この2つは「変更前のスナップショット」を取るセーフガードです。Blast Radius が空間的な影響範囲を、Test Baseline が時間的な前後比較を記録し、改変の影響を「どこまで広がるか」と「壊していないか」の両面から確認します。なお、Blast Radius という観点は設計レビュアーのコア質問にも登場しますが、その詳細は別記事「[レビュアー](https://qiita.com/takeshishimada/items/624d83e946e86e4b1553)」で扱います。
 
 ## 二本柱としての全体像
 
@@ -133,21 +138,21 @@ flowchart LR
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/knowledge/aidlc-shared/brownfield.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/knowledge/aidlc-shared/brownfield.md) | 6セーフガードの権威ある定義（Safeguard Matrix・Blast Radius テンプレート・Test Baseline プロトコル）|
-| [`aidlc-common/stages/inception/reverse-engineering.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/stages/inception/reverse-engineering.md) | リバースエンジニアリングステージ。CONDITIONAL 実行条件・lead/support・9成果物 |
-| [`core/knowledge/aidlc-developer-agent/re-artifacts.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/knowledge/aidlc-developer-agent/re-artifacts.md) | RE 成果物のナレッジ。9成果物の定義とスキャン／統合テンプレート |
-| [`core/knowledge/aidlc-shared/state-template.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/knowledge/aidlc-shared/state-template.md) | 状態ファイルの雛形。`Project Type`（Greenfield/Brownfield）フィールド |
-| [`aidlc-common/stages/initialization/workspace-detection.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/stages/initialization/workspace-detection.md) | greenfield／brownfield の決定論的な判定基準 |
-| [`aidlc-common/stages/initialization/state-init.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/stages/initialization/state-init.md) | プロジェクトタイプによる最初の構想ステージのルーティング |
-| [`aidlc-common/stages/inception/practices-discovery.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/stages/inception/practices-discovery.md) | 下流が RE の8成果物を `conditional_on: brownfield` で消費する例 |
-| [`aidlc-common/stages/construction/code-generation.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/stages/construction/code-generation.md) | ブラウンフィールドはその場での改変（in-place）・重複コピー禁止 |
-| [`core/agents/aidlc-architecture-reviewer-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/agents/aidlc-architecture-reviewer-agent.md) | Blast Radius が設計レビュアーのコア質問にも現れる点 |
-| [`CHANGELOG.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/CHANGELOG.md) | エンジンが `conditional_on: brownfield/greenfield` を Project Type で絞り込む |
+| [`core/knowledge/aidlc-shared/brownfield.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/knowledge/aidlc-shared/brownfield.md) | 6セーフガードの権威ある定義（Safeguard Matrix・Blast Radius テンプレート・Test Baseline プロトコル）|
+| [`aidlc-common/stages/inception/reverse-engineering.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/inception/reverse-engineering.md) | リバースエンジニアリングステージ。CONDITIONAL 実行条件・lead/support・9成果物 |
+| [`core/knowledge/aidlc-developer-agent/re-artifacts.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/knowledge/aidlc-developer-agent/re-artifacts.md) | RE 成果物のナレッジ。9成果物の定義とスキャン／統合テンプレート |
+| [`core/knowledge/aidlc-shared/state-template.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/knowledge/aidlc-shared/state-template.md) | 状態ファイルの雛形。`Project Type`（Greenfield/Brownfield）フィールド |
+| [`aidlc-common/stages/initialization/workspace-detection.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/initialization/workspace-detection.md) | greenfield／brownfield の決定論的な判定基準 |
+| [`aidlc-common/stages/initialization/state-init.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/initialization/state-init.md) | プロジェクトタイプによる最初の構想ステージのルーティング |
+| [`aidlc-common/stages/inception/practices-discovery.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/inception/practices-discovery.md) | 下流が RE の8成果物を `conditional_on: brownfield` で消費する例 |
+| [`aidlc-common/stages/construction/code-generation.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/construction/code-generation.md) | ブラウンフィールドはその場での改変（in-place）・重複コピー禁止 |
+| [`core/agents/aidlc-architecture-reviewer-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/agents/aidlc-architecture-reviewer-agent.md) | Blast Radius が設計レビュアーのコア質問にも現れる点 |
+| [`CHANGELOG.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/CHANGELOG.md) | エンジンが `conditional_on: brownfield/greenfield` を Project Type で絞り込む |
 
 ---
 
 ## 関連記事
 
 **前の記事**: [ウォーキングスケルトン](https://qiita.com/takeshishimada/items/7a24030b9d8905f379ed)
-**次の記事**: [承認ゲート](https://qiita.com/takeshishimada/private/cd6827700443c9987fd7)
+**次の記事**: [承認ゲート](https://qiita.com/takeshishimada/items/cd6827700443c9987fd7)
 **目次**: [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad)
