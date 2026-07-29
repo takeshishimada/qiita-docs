@@ -17,15 +17,15 @@ ignorePublish: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 6 月時点の v2.1.3（コミット `c95070e`、`core/`）を参照しています。Kiro・Codex 実装は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
 ## 概要
 
-スコープ（scope）は、ワークフローでどのステージを実行し、どれをスキップするかを決める選択です。AI-DLC v2 の工程は全32ステージありますが、案件によって必要な工程は違います。バグ修正に市場調査はいらず、PoC（概念実証）に運用設計もいりません。スコープは「今回はどんな作業か」を一語で宣言し、それに応じて工程を絞り込みます。`poc` から `enterprise` まで9種が用意され、いずれもコードではなくファイルで定義されます。
+スコープ（scope）は、ワークフローでどのステージを実行し、どれをスキップするかを決める選択です。AI-DLC v2 の工程は全32ステージありますが、案件によって必要な工程は違います。バグ修正に市場調査はいらず、PoC（概念実証）に運用設計もいりません。スコープは「今回はどんな作業か」を一語で宣言し、それに応じて工程を絞り込みます。`poc` から `enterprise` まで9種が用意され、いずれもコードではなくファイルで定義されます。どれにも当てはまらない案件のために、その場でスコープを組む道も用意されています。
 
-スコープは、工程の絞り込みと深さの既定を決める起点です。本記事では、9種のカタログ、各スコープが実行／スキップするステージ、自由文からの自動推定、そしてコード変更なしで増やせるファイル定義という仕組みを読み解きます。
+スコープは、工程の絞り込みと深さの既定を決める起点です。本記事では、9種のカタログ、各スコープが実行／スキップするステージ、自由文からの自動推定、どれにも当てはまらないときにその場で組む仕組み、そしてコード変更なしで増やせるファイル定義を読み解きます。
 
 ## スコープとは
 
@@ -91,7 +91,7 @@ flowchart LR
 | `workshop` | **25 / 32** | 発想（ideation）を**7ステージすべて SKIP**。題材はファシリテーターが事前に決めるため。設計から運用まではそのまま見せ、テストだけ Minimal |
 | `mvp` | **22 / 32** | 発想の市場調査・チーム編成・承認引き継ぎ、および**運用フェーズ全7ステージ**を SKIP。MVP は製品を証明するが、まだ運用は背負わない |
 | `infra` | **13 / 32** | 製品機能側（発想すべて・アプリ設計・コード生成）を SKIP。NFR（非機能要件）／インフラ設計とデプロイ・可観測性を実行。**9種で唯一 `reverse-engineering` を SKIP**（インフラはデプロイ構成から始まり、アプリのソースから始まらないため） |
-| `security-patch` | **9 / 32** | 設計の手順はほぼ全 SKIP。ただし `bugfix` と違い `deployment-pipeline`／`deployment-execution` は EXECUTE（デプロイされない修正は脆弱性を塞がない）。要件は `requirements-analysis` でなく `nfr-requirements` で記録 |
+| `security-patch` | **10 / 32** | 設計の手順はほぼ全 SKIP。ただし `bugfix` と違い `deployment-pipeline`／`deployment-execution` は EXECUTE（デプロイされない修正は脆弱性を塞がない）。脆弱性と是正基準を記録に残すため `requirements-analysis` を実行し、`nfr-requirements` でセキュリティ上の制約を記録 |
 | `poc` | **8 / 32** | 動くコードまでの細い道だけ。`bugfix` の構成に `intent-capture`（仮説の意図をとらえる）を足した形。設計・運用・計画は省く（スパイクは使い捨て） |
 | `refactor` | **8 / 32** | `bugfix` とほぼ同じ＋`functional-design`（保つべき振る舞いの目標形を描く）。新製品も新デプロイ面もないので発見・運用はスキップする |
 | `bugfix` | **7 / 32** | 最小。初期化＋`reverse-engineering`／`requirements-analysis`／`code-generation`／`build-and-test`。既知システムへの増分作業なので、それ以外は不要 |
@@ -100,7 +100,7 @@ flowchart LR
 
 > **補足（一次資料内の食い違い）**
 > `core/scopes/aidlc-enterprise.md` の説明文は「全32ステージを EXECUTE するのは enterprise **だけ**」と書いていますが、実際には `feature` も 32/32 です（`aidlc-feature.md` 自身が "runs every stage" と明言）。両者の差は**実行範囲ではなく深さだけ**、というのが実ファイルから読める正確な姿です。
-> また `stage-protocol.md` §8 のスコープ表は概数（"~25" など）で、実数とわずかにズレます（`mvp` は実22、`bugfix` は7、`refactor` は8、`security-patch` は9、`workshop` は表に未掲載）。本記事の数値は**各ステージのフロントマターの `scopes:` を全数集計した実数**です。
+> また `stage-protocol.md` §8 のスコープ表は概数（"~25" など）で、実数とわずかにズレます（`mvp` は実22、`bugfix` は7、`refactor` は8、`security-patch` は10、`workshop` は表に未掲載）。本記事の数値は**各ステージのフロントマターの `scopes:` を全数集計した実数**です。
 
 ---
 
@@ -114,9 +114,9 @@ flowchart LR
 
 - **単語境界マッチ**。`bug` は `debug` や `fixture` には当たりません。
 - **スコープをアルファベット順に走査し、最初に当たったものを採用**（呼ぶたびに結果が同じになるよう）。
-- **入力文がキーワードを含んでいても5語を超える（6語以上の）場合、またはどのキーワードにも当たらない場合は `feature` にフォールバック**。説明文に偶然キーワードが混ざっただけのプロジェクト記述を、誤って狭いスコープに落とさないための保険です。
+- **入力文がキーワードを含んでいても5語を超える（6語以上の）場合、またはどのキーワードにも当たらない場合は、キーワード一致とは見なさない**。説明文に偶然キーワードが混ざっただけのプロジェクト記述を、誤って狭いスコープに落とさないための保険です。
 
-こうして自動推定は出発点の提案にとどまり、迷ったら一番広い `feature` に寄せる設計になっています。
+この区別が、その後の分かれ道になります。**はっきり当たったときは、そのスコープ名を挙げて確認を求めます**（`bugfix` に当たったなら `bugfix` と名指しする）。**当たらなかったとき、あるいは長い説明文だったときは、既定のスコープに寄せるのではなく、スコープを組む提案に回ります。** かつては一番広い `feature` に寄せる設計でしたが、いまは曖昧さを既定値で埋めず、そのつど組み立てる側へ渡します。
 
 ### 最終的に採用される値
 
@@ -135,6 +135,42 @@ flowchart LR
 - `bugfix` / `feature` / `mvp` / `security-patch` にはキーワードの自動推定を挟まず固定で走る専用ランナー `/aidlc-<scope>` があります。それ以外のスコープは `--scope` で到達します。
 
 人が `--scope` や専用ランナーで明示すれば、自動推定よりそちらが優先されます。
+
+---
+
+## 9種に当てはまらないとき
+
+ここまでは「用意された9種から選ぶ」話でした。ところが手元の案件がどれにも当てはまらないことがあります。既存コードの調査は要るが設計は要らない、運用は不要だがデプロイは通したい、といった組み合わせです。
+
+そのために **コンポーザー**（`aidlc-composer-agent`）がいます。担当するのは「**今回どのステージを通すか**」を組み立てる仕事で、成果物を作るわけでもレビューするわけでもありません。
+
+### 呼ばれる条件
+
+自由文で頼んだとき、キーワードがはっきり当たればそのスコープ名を挙げて確認を求めます。**当たらなかったとき、あるいは長い説明文だったときに、コンポーザーが呼ばれます。** 明示的に `/aidlc compose "<作業内容>"` と書けば、既存スコープが当たる場合でも強制できます。走査レポートを渡して指摘の対応計画を組ませることもできます。
+
+### 見積もりから最小構成へ
+
+コンポーザーはまず**実装の見通しにくさを見積もります**。意図の曖昧さ、コードベースの構造的な不確実さ、検証の難しさ、リスク、未解決の仮定という5つの成分を採点し、そこから**最小限で十分なステージの並び**を組みます。「意図を検証済みの変更へ安全に変換できる、いちばん短い経路」という考え方です。
+
+構造の見積もりには、コードの知識ベースが使える場合はそれを優先し、無ければワークスペースの走査で代替します。
+
+### 承認を経た書き出し
+
+提案は、実行するステージと飛ばすステージの一覧に、**飛ばす理由をそれぞれ添えた形**で出ます。含める理由だけでなく、外す理由も述べることが規約で求められています。
+
+人が承認して初めて、スコープとしてファイルに書き出され、そのままワークフローが始まります。承認前に書き出すことはありません。
+
+### 推定に参加しない合成スコープ
+
+書き出されるスコープは **`keywords: []`** を持ちます。つまり `--scope <名前>` で名指しすれば使えますが、**以後の自動推定には一切関与しません**。
+
+一度きりの計画が将来のキーワード推定を書き換えてしまわないための線引きです。そのスコープを推定の対象にするかどうかは、人がゲートで明示的に決めることになっています。
+
+### 進行中の組み替え
+
+ワークフローが始まったあとでも、まだ着手していないステージの構成は変えられます。「市場調査は飛ばせますか」といった**普通の会話**が認識され、同じ承認の関門を通って計画に反映されます。組み替えは `RECOMPOSED` として監査に残ります。
+
+ただし完了済み・進行中のステージ、カーソルより手前のステージ、構築フェーズ最初の実行ステージは動かせません。無人で走る自律モードの構築中も拒否されます。
 
 ---
 
@@ -193,7 +229,7 @@ flowchart LR
 |  | delivery-planning | ● | ● | ● | ● | ・ | ・ | ・ | ・ | ・ |
 |  | practices-discovery | ● | ● | ● | ● | ● | ・ | ・ | ・ | ・ |
 |  | refined-mockups | ● | ● | ● | ● | ・ | ・ | ・ | ・ | ・ |
-|  | requirements-analysis | ● | ● | ● | ● | ● | ・ | ● | ● | ● |
+|  | requirements-analysis | ● | ● | ● | ● | ● | ● | ● | ● | ● |
 |  | reverse-engineering | ● | ● | ● | ● | ・ | ● | ● | ● | ● |
 |  | units-generation | ● | ● | ● | ● | ・ | ・ | ・ | ・ | ・ |
 |  | user-stories | ● | ● | ● | ● | ・ | ・ | ・ | ・ | ・ |
@@ -211,7 +247,7 @@ flowchart LR
 |  | incident-response | ● | ● | ● | ・ | ・ | ・ | ・ | ・ | ・ |
 |  | observability-setup | ● | ● | ● | ・ | ● | ・ | ・ | ・ | ・ |
 |  | performance-validation | ● | ● | ● | ・ | ・ | ・ | ・ | ・ | ・ |
-| **計** | **EXECUTE / 32** | **32** | **32** | **25** | **22** | **13** | **9** | **8** | **8** | **7** |
+| **計** | **EXECUTE / 32** | **32** | **32** | **25** | **22** | **13** | **10** | **8** | **8** | **7** |
 
 略号：ent=enterprise／feat=feature／work=workshop／mvp=mvp／infra=infra／sec=security-patch／poc=poc／ref=refactor／bug=bugfix。
 
@@ -221,13 +257,15 @@ flowchart LR
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/scopes/`](https://github.com/awslabs/aidlc-workflows/tree/v2.1.3/core/scopes)（9ファイル） | 9種のスコープ定義。各フロントマター（name / depth / keywords / description / testStrategy）と「なぜそのステージを EXECUTE/SKIP するか」の説明文 |
-| [`core/aidlc-common/stages/`](https://github.com/awslabs/aidlc-workflows/tree/v2.1.3/core/aidlc-common/stages)（32ファイル） | 全32ステージ。各フロントマターの `scopes:` リストが EXECUTE/SKIP の唯一の源泉（付録マトリクスはこれを集計） |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/protocols/stage-protocol.md) | §8 Depth Guidance に scope→depth 既定の対応表、テスト戦略の既定・上書きルール |
-| [`core/tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/tools/aidlc-utility.ts) | `inferScopeFromText()`：キーワードの単語境界マッチ・アルファベット順 first-match・5語超→`feature` フォールバック |
-| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/tools/aidlc-orchestrate.ts) | `resolveScope()`：state → `--scope` → 環境変数 → 既定 `feature` の優先順位 |
-| [`core/tools/aidlc-lib.ts`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/tools/aidlc-lib.ts) | `loadScopeMapping()`：グリッド（`.stages`）＋ `.md` フロントマターを合成してスコープ定義を復元 |
-| [`CHANGELOG.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/CHANGELOG.md) | 0.5 系：`scope-mapping.json` 廃止 → `scopes/*.md` ＋各ステージ `scopes:` タグの file-authored 化、`compile` での転置、`/aidlc-<scope>` ランナー |
+| [`core/agents/aidlc-composer-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/agents/aidlc-composer-agent.md) | コンポーザーのペルソナ。実装エントロピーの5成分、最小限で十分な構成、承認前に書き出さない規約、合成スコープが `keywords: []` を持つ理由、含める理由と外す理由の両方を述べる規約 |
+| [`core/knowledge/aidlc-composer-agent/composing.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/knowledge/aidlc-composer-agent/composing.md) | 構成を組む手順のナレッジ |
+| [`core/scopes/`](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/scopes)（9ファイル） | 9種のスコープ定義。各フロントマター（name / depth / keywords / description / testStrategy）と「なぜそのステージを EXECUTE/SKIP するか」の説明文 |
+| [`core/aidlc-common/stages/`](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/aidlc-common/stages)（32ファイル） | 全32ステージ。各フロントマターの `scopes:` リストが EXECUTE/SKIP の唯一の源泉（付録マトリクスはこれを集計） |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol.md) | §8 Depth Guidance に scope→depth 既定の対応表、テスト戦略の既定・上書きルール |
+| [`core/tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-utility.ts) | `inferScopeFromText()`：キーワードの単語境界マッチ・アルファベット順 first-match・5語超や不一致は `source: freeform`（既定に寄せず、スコープを組む提案へ回る） |
+| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-orchestrate.ts) | `resolveScope()`：state → `--scope` → 環境変数 → 既定 `feature` の優先順位 |
+| [`core/tools/aidlc-lib.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-lib.ts) | `loadScopeMapping()`：グリッド（`.stages`）＋ `.md` フロントマターを合成してスコープ定義を復元 |
+| [`CHANGELOG.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/CHANGELOG.md) | 0.5 系：`scope-mapping.json` 廃止 → `scopes/*.md` ＋各ステージ `scopes:` タグの file-authored 化、`compile` での転置、`/aidlc-<scope>` ランナー |
 
 ---
 

@@ -5,7 +5,7 @@ tags:
   - ClaudeCode
   - AIDLC
   - AI-DLC
-private: true
+private: false
 updated_at: '2026-07-02T11:26:35+09:00'
 id: 624d83e946e86e4b1553
 organization_url_name: null
@@ -17,13 +17,13 @@ ignorePublish: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 6 月時点の v2.1.3（コミット `c95070e`、`core/`）を参照しています。Kiro・Codex 実装は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
 ## 概要
 
-レビュアーは、作り手とは別のエージェントです。ステージが成果物を作り終えた直後に、その出来栄えを READY か NOT-READY で判定し、指摘を返します。作り手の思考過程はあえて渡されず、初めて見る目で成果物だけを評価します。ただし強制力は持たず、NOT-READY を返してもワークフローは止まりません。最終判断は人が承認ゲートで下し、レビュアーはその手前で判断材料を増やすだけです。担当は専任2体で、出荷時点では11ステージに割り当てられています。
+レビュアーは、作り手とは別のエージェントです。ステージが成果物を作り終えた直後に、その出来栄えを READY か NOT-READY で判定し、指摘を返します。作り手の思考過程はあえて渡されず、初めて見る目で成果物だけを評価します。ただし強制力は持たず、NOT-READY を返してもワークフローは止まりません。最終判断は人が承認ゲートで下し、レビュアーはその手前で判断材料を増やすだけです。担当は専任2体で、出荷時点では12ステージに割り当てられています。
 
 本記事では、なぜ作り手から切り離すのか、助言にとどめるのは何のためか、そして READY の基準と往復の収束のさせ方を読み解きます。
 
@@ -31,7 +31,7 @@ ignorePublish: false
 
 成果物を作ったエージェント自身に「これで十分か」を尋ねても、自分の判断を肯定しがちです。レビュアーは、その出力を初めて見る目で評価する独立したエージェントです。機械的なチェックでは拾えない「設計の穴」「テストできない要件」を、人が承認ゲートで判断する前に洗い出します。
 
-レビュアーは専任の2体です。成果物を作る11体に、レビューだけを担う2体が加わって計13体になります。
+レビュアーは専任の2体です。成果物を作る11体に、レビューだけを担う2体と、スコープを組むコンポーザー1体が加わって計14体になります。
 
 ---
 
@@ -47,11 +47,21 @@ ignorePublish: false
 
 レビュアーは強制力を持ちません。NOT-READY を返してもワークフローを止める権限はなく、**最終決定は必ず承認者が承認ゲートで下します**。レビュアー自身が承認することもありません。往復の上限を超えても NOT-READY のままなら、未解決の指摘を添えてそのまま人に提示されます。
 
-止める力を持つのは人が判断する承認ゲートだけです。助言と停止の線引きと、助言にとどまるからこそ生じる見落としの余地は、それぞれ別記事「[承認ゲート](https://qiita.com/takeshishimada/private/cd6827700443c9987fd7)」「限界と注意点」で扱います。同じ助言でも、成果物の保存ごとに自動で走るセンサーとはタイミングが違い、レビュアーは成果物の完成後に、宣言された特定のステージでだけ走ります。センサーの仕組みは別記事「[センサー](https://qiita.com/takeshishimada/private/5f8dbb62f25c1a09a257)」で扱います。
+止める力を持つのは人が判断する承認ゲートだけです。助言と停止の線引きと、助言にとどまるからこそ生じる見落としの余地は、それぞれ別記事「[承認ゲート](https://qiita.com/takeshishimada/items/cd6827700443c9987fd7)」「限界と注意点」で扱います。同じ助言でも、成果物の保存ごとに自動で走るセンサーとはタイミングが違い、レビュアーは成果物の完成後に、宣言された特定のステージでだけ走ります。センサーの仕組みは別記事「[センサー](https://qiita.com/takeshishimada/items/5f8dbb62f25c1a09a257)」で扱います。
+
+ここで一つ、混同しやすい仕組みがあります。レビュアーを宣言したステージは、**レビューが走った記録が無いと完了できません**。`REVIEW_REQUESTED` と `REVIEW_COMPLETED` が監査に残り、差し戻し・改訂・成果物の書き換えが起きると古い記録は無効になります。
+
+これは判定でワークフローを止めているわけではありません。要求されているのは「**新鮮な判定が存在すること**」で、判定の中身は問われません。**NOT-READY でも完了できます。** 宣言した成果物がディスクに無いと完了を拒むアーティファクト・ガードと同じ性格の、証拠を求める前提条件です。レビュアーが止める側に回ったわけではない、という区別が要ります。
+
+もう一つ、レビュアーの**読み取り範囲**は仕組みとして縛られています。作業単位ごとに走る構築ステージでは、渡された成果物と共有の上流契約の外——たとえば別の作業単位の設計ディレクトリ——へ手を伸ばそうとすると、フックがツール呼び出しを拒否します。以前は「全部を相互参照せよ」という指示だったため、作業単位が増えるほどレビューの費用が比例して膨らんでいました。
 
 ### READY は「完璧」ではなく「迷わず実装できる」
 
 両レビュアーの合格基準は同じ一文に集約されます。**「開発者がこの文書だけで、設計者に質問し直すことなく実装に着手できるか」**。完璧さではなく実装可能性が基準です。逆に「実装の前に作り手へ確認が要る」なら NOT-READY です。
+
+そして READY は、**出発点ではなく到達点**です。レビュアーの仕事は成果物を肯定することではなく**反証すること**だと規約に定められています。欠陥は存在するものと仮定して探し、壊そうとして壊せなかったときに初めて READY になります。
+
+この姿勢には根拠の条件が付きます。**指摘は機械で確かめられる証拠に接地していなければなりません。** レビュアーは起動時に渡された検証ツールを実際に走らせ、成果物を受け入れ基準・ステージ定義・消費した上流の契約と突き合わせます。意見だけを支えにした指摘は提案にとどまり、NOT-READY の根拠にはなりません。
 
 ---
 
@@ -83,20 +93,20 @@ flowchart TD
     GATE["学習ゲート"] --> APPROVE["承認ゲート（人が最終判断）"]
 ```
 
-順序は「成果物 → （宣言があれば）レビュー → 学習ゲート → 承認ゲート」です。レビューは学習ゲートよりも前に走ります。学習ゲートとの順序は別記事「[学習ループ](https://qiita.com/takeshishimada/private/dd7f3d034ee2c137cff5)」で扱います。
+順序は「成果物 → （宣言があれば）レビュー → 学習ゲート → 承認ゲート」です。レビューは学習ゲートよりも前に走ります。学習ゲートとの順序は別記事「[学習ループ](https://qiita.com/takeshishimada/items/dd7f3d034ee2c137cff5)」で扱います。
 
 ---
 
 ## ステージごとの担当レビュアー
 
-レビュアーは、ステージの `reviewer:` フロントマターで宣言された場合だけ起動します。コンダクターが `Task` で独立サブエージェントとして呼び出します。出荷時点で**11ステージ**に宣言があり、担当は**2体**です。
+レビュアーは、ステージの `reviewer:` フロントマターで宣言された場合だけ起動します。コンダクターが `Task` で独立サブエージェントとして呼び出します。出荷時点で**12ステージ**に宣言があり、担当は**2体**です。
 
 | レビュアー | モデル | 担当ステージ |
 |---|---|---|
 | **architecture-reviewer**（設計者の目） | sonnet | application-design／units-generation／functional-design／infrastructure-design／nfr-requirements／nfr-design／code-generation（7ステージ） |
-| **product-lead**（顧客の目） | sonnet | rough-mockups／refined-mockups／user-stories／requirements-analysis（4ステージ） |
+| **product-lead**（顧客の目） | sonnet | intent-capture／rough-mockups／refined-mockups／user-stories／requirements-analysis（5ステージ） |
 
-`reviewer:` のないステージでは、レビュー自体が走りません。エージェント13体の編成と、どのステージを誰が担当するかは別記事「[工程とエージェント](https://qiita.com/takeshishimada/items/418d7b9e17192e8add85)」で扱います。
+`reviewer:` のないステージでは、レビュー自体が走りません。エージェント14体の編成と、どのステージを誰が担当するかは別記事「[工程とエージェント](https://qiita.com/takeshishimada/items/418d7b9e17192e8add85)」で扱います。
 
 ---
 
@@ -172,37 +182,39 @@ NOT-READY のときは、レビュアー単独では完結せず、成果物を�
 
 再レビュー時は、前回の各指摘を「解決／一部解決／未解決」で確認し、`## Review` 節は**2つ目を追記せず置き換え**ます。修正から派生した新しい問題だけを追加で挙げ、ブロックしない Minor は再び指摘しません。
 
-> テスト実行モード（`--test-run`）でもレビューは走ります（CI でも成果物の質を検証するため）。ただし上限到達後も NOT-READY なら、承認ゲートの自動承認と同様に自動で先へ進みます。
-
 ---
 
 ## 主担当・補佐との違い
 
 ステージのエージェントには lead（主担当）と support（観点を貸す補佐）がありますが、レビュアーは**それらとは別の軸**です。
 
-- lead／support は**作る側**。同じコンテキストで協働して成果物を作る
+- lead／support は**作る側**。成果物を仕上げることに責任を持つ
 - レビュアーは**評価する側**。作り手の思考を渡されず、独立サブエージェントとして判定する
+
+support がどう働くかは、ステージの `mode` によって変わります。32ステージのうち28は `inline` で、コンダクターが補佐の役も自分で引き受けます。`mob` と、補佐を宣言した `subagent` では補佐が独立に起動され、自分の書いたものを `contributions/` 配下の自分のファイルに残します。`pipeline` では鎖の各段が成果物を直接書き換えます。ただし**いずれの場合も support は成果物を仕上げる側**で、評価する側ではありません。協働のかたちの詳細は別記事「[工程とエージェント](https://qiita.com/takeshishimada/items/418d7b9e17192e8add85)」で扱います。
 
 セキュリティやコンプライアンスといった観点に専任のレビュアーはおらず、devsecops／compliance エージェントが support として担当ステージに観点を持ち込みます。レビュアー2体は、品質の最終確認だけを担う独立した目です。
 
-なお、起動時に各エージェントの役割定義を読み込む処理（ペルソナ読み込み）が列挙する「作る側」の編成は11体で、レビュアー2体はここに含まれません。評価専任のため別枠で、名簿（roster）上の総数は 11+2＝13 体になります。
+なお、起動時に各エージェントの役割定義を読み込む処理（ペルソナ読み込み）が列挙する「作る側」の編成は11体で、レビュアー2体はここに含まれません。評価専任のため別枠です。これにスコープを組むコンポーザー1体を加えて、名簿（roster）上の総数は 11+2+1＝14 体になります。
 
 ## 参照元
 
 | ファイル | 内容 |
 |---------|------|
-| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/protocols/stage-protocol.md) | ステージプロトコル。レビュアーの起動・往復・判定の全手順と、レビュー後の学習ゲート |
-| [`core/agents/aidlc-architecture-reviewer-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/agents/aidlc-architecture-reviewer-agent.md) | 設計レビュアーの定義（視点・コアレビュー質問・READY の定義） |
-| [`core/agents/aidlc-product-lead-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/agents/aidlc-product-lead-agent.md) | プロダクトレビュアーの定義 |
-| [`core/knowledge/aidlc-architecture-reviewer-agent/reviewing.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/knowledge/aidlc-architecture-reviewer-agent/reviewing.md) | 設計者の目で見るチェック項目。`## Review` 形式・重大度・判定ルール・検証ツール結果表 |
-| [`core/knowledge/aidlc-product-lead-agent/reviewing.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/knowledge/aidlc-product-lead-agent/reviewing.md) | 顧客の目で見るチェック項目。`## Review` 形式・重大度・判定ルール |
-| [`core/aidlc-common/stages/inception/requirements-analysis.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/stages/inception/requirements-analysis.md) | `reviewer:` フロントマターの宣言例 |
-| [`CHANGELOG.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/CHANGELOG.md) | 2.0.0：レビュアー機構の追加（助言的品質ゲート、既定2往復、roster 11→13） |
+| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol.md) | ステージプロトコル。レビュアーの起動・往復・判定の全手順と、レビュー後の学習ゲート |
+| [`core/agents/aidlc-architecture-reviewer-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/agents/aidlc-architecture-reviewer-agent.md) | 設計レビュアーの定義（視点・コアレビュー質問・READY の定義） |
+| [`core/agents/aidlc-product-lead-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/agents/aidlc-product-lead-agent.md) | プロダクトレビュアーの定義 |
+| [`core/knowledge/aidlc-architecture-reviewer-agent/reviewing.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/knowledge/aidlc-architecture-reviewer-agent/reviewing.md) | 設計者の目で見るチェック項目。`## Review` 形式・重大度・判定ルール・検証ツール結果表 |
+| [`core/knowledge/aidlc-product-lead-agent/reviewing.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/knowledge/aidlc-product-lead-agent/reviewing.md) | 顧客の目で見るチェック項目。`## Review` 形式・重大度・判定ルール |
+| [`core/aidlc-common/stages/inception/requirements-analysis.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/inception/requirements-analysis.md) | `reviewer:` フロントマターの宣言例 |
+| [`core/hooks/aidlc-reviewer-scope.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/hooks/aidlc-reviewer-scope.ts) | 読み取り範囲を決定論的に縛る PreToolUse フック。作業単位をまたぐ読み書きと grep/glob を拒否し、渡された契約のパスへ差し戻す |
+| [`core/tools/aidlc-log.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-log.ts) | `review` サブコマンド。`REVIEW_REQUESTED`／`REVIEW_COMPLETED` の記録 |
+| [`CHANGELOG.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/CHANGELOG.md) | 2.0.0：レビュアー機構の追加（助言的品質ゲート、既定2往復）。2.4.0：反証を義務づける敵対的レビュー契約（プロンプトのみの変更で、レビューループの機構は不変）。2.3.4：読み取り範囲のフックによる強制。2.5.5：レビュー記録が無いと完了を拒む前提条件 |
 
 ---
 
 ## 関連記事
 
-**前の記事**: [センサー](https://qiita.com/takeshishimada/private/5f8dbb62f25c1a09a257)
-**次の記事**: [フェーズ境界検証](https://qiita.com/takeshishimada/private/f2f4e426dd542c5b6765)
+**前の記事**: [センサー](https://qiita.com/takeshishimada/items/5f8dbb62f25c1a09a257)
+**次の記事**: [フェーズ境界検証](https://qiita.com/takeshishimada/items/f2f4e426dd542c5b6765)
 **目次**: [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad)

@@ -17,7 +17,7 @@ ignorePublish: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 6 月時点の v2.1.3（コミット `c95070e`、`core/`）を参照しています。Kiro・Codex 実装は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -71,7 +71,7 @@ AI-DLC v2 には、ワークフローの振る舞いを変える独立した軸�
 | スコープ確認時 | 提示されたスコープを確認する場面で深さを変更 |
 | 承認ゲート | やり直しのフィードバックとして別の深さを要求 |
 
-優先順位は単純で、明示的な指定があればそれを、なければスコープの既定を使います。深さやテスト戦略を変えると、監査ログに `DEPTH_CHANGED`／`TEST_STRATEGY_CHANGED` として記録が残ります。承認ゲートそのものは別記事「[承認ゲート](https://qiita.com/takeshishimada/private/cd6827700443c9987fd7)」で扱います。
+優先順位は単純で、明示的な指定があればそれを、なければスコープの既定を使います。深さやテスト戦略を変えると、監査ログに `DEPTH_CHANGED`／`TEST_STRATEGY_CHANGED` として記録が残ります。承認ゲートそのものは別記事「[承認ゲート](https://qiita.com/takeshishimada/items/cd6827700443c9987fd7)」で扱います。
 
 ## 具体例
 
@@ -89,10 +89,10 @@ AI-DLC v2 には、ワークフローの振る舞いを変える独立した軸�
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/tools/aidlc-utility.ts) | 深さ・テスト戦略の enum（`minimal`/`standard`/`comprehensive`）と解決ロジック（テスト戦略の既定は深さに追従） |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/protocols/stage-protocol.md) | §8 深さ別の質問数の目安・成果物スケール、承認ゲートでの変更、矛盾検出は全深さで必須 |
-| [`core/scopes/`](https://github.com/awslabs/aidlc-workflows/tree/v2.1.3/core/scopes)（9ファイル） | 各スコープの `depth` 既定。`aidlc-workshop.md` のみ `testStrategy: Minimal` を分離 |
-| [`core/tools/aidlc-audit.ts`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/tools/aidlc-audit.ts) | 監査イベント `DEPTH_CHANGED`／`TEST_STRATEGY_CHANGED` の定義 |
+| [`core/tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-utility.ts) | 深さ・テスト戦略の enum（`minimal`/`standard`/`comprehensive`）と解決ロジック（テスト戦略の既定は深さに追従） |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol.md) | §3 深さ別の質問数の目安と「目安であって上限ではない」規定、矛盾検出は全深さで必須。§8 スコープごとの深さの既定、深さ別の成果物スケール、承認ゲートを含む変更の3タイミング、テスト戦略 |
+| [`core/scopes/`](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/scopes)（9ファイル） | 各スコープの `depth` 既定。`aidlc-workshop.md` のみ `testStrategy: Minimal` を分離 |
+| [`core/tools/aidlc-audit.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-audit.ts) | 監査イベント `DEPTH_CHANGED`／`TEST_STRATEGY_CHANGED` の定義 |
 
 ---
 

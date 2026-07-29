@@ -17,7 +17,7 @@ ignorePublish: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 6 月時点の v2.1.3（コミット `c95070e`、`core/`）を参照しています。Kiro・Codex 実装は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -37,7 +37,7 @@ AI-DLC v2 では、これは設計上の推奨にとどまらず、ワークフ�
 
 ```mermaid
 flowchart TD
-    subgraph INC["Inception 2.8 デリバリープランニング"]
+    subgraph INC["Inception 2.8 デリバリー計画"]
         direction TB
         DAG["依存DAG（2.7が生成）"] --> SEQ["Boltの順序を経済的に決定"]
         SEQ --> PLAN["bolt-plan.md<br/>（スケルトンマーカー）"]
@@ -58,11 +58,11 @@ flowchart TD
 
 ## 計画が決まるタイミング
 
-どの Bolt をウォーキングスケルトンにするかは、Inception の **2.8 デリバリープランニング** で決まります。ここで Bolt の実行順序が組まれ、最初に置く Bolt にスケルトンマーカーが付けられます。
+どの Bolt をウォーキングスケルトンにするかは、Inception（構想）フェーズの最後のステージ、**デリバリー計画**（2.8）で決まります。ここで Bolt の実行順序が組まれ、最初に置く Bolt にスケルトンマーカーが付けられます。
 
-Bolt をどの順で作るかは、**依存関係を満たす範囲で、価値やリスクの優先度から決まります**。2.7 が依存関係の DAG（各 Bolt の前後関係を矢印でつないだ図）を作り、2.8 はそこを通る経路を選びます。依存の前後だけで機械的に並ぶ順（トポロジカル順）ではなく、どの価値・リスクに先に向き合うかという、DAG からは導けない人の価値判断だからです。順序づけのヒューリスティックは複数あり、その一つが walking-skeleton-first です（ほかに risk-first、value-first、WSJF（重み付き最短ジョブ優先）、これらの hybrid）。
+Bolt をどの順で作るかは、**依存関係を満たす範囲で、価値やリスクの優先度から決まります**。作業単位の生成（2.7）が依存関係の DAG（各 Bolt の前後関係を矢印でつないだ図）を作り、デリバリー計画（2.8）がそこを通る経路を選びます。依存の前後だけで機械的に並ぶ順（トポロジカル順）ではなく、どの価値・リスクに先に向き合うかという、DAG からは導けない人の価値判断だからです。順序づけのヒューリスティックは複数あり、その一つが walking-skeleton-first です（ほかに risk-first、value-first、WSJF（重み付き最短ジョブ優先）、これらの hybrid）。
 
-決定はデリバリープランニングの成果物に記録されます。スケルトンと順序づけに直接効くのは、次の表の上2つです。
+決定はデリバリー計画の成果物に記録されます。スケルトンと順序づけに直接効くのは、次の表の上2つです。
 
 | 成果物 | 内容 |
 | --- | --- |
@@ -77,7 +77,7 @@ Bolt をどの順で作るかは、**依存関係を満たす範囲で、価値�
 
 Construction に入ると、最初の Bolt（ウォーキングスケルトン）には特別な承認ゲートが置かれます。このゲートは **自律モードの設定に関わらず、最初の Bolt では必ず人の承認を求めます**。後続の Bolt を自律で走らせる設定にしていても、最初の1本だけは必ず人が確認します。
 
-ゲートは、その Bolt の **設計成果物と生成コードをまとめて** 対象にします。機能を足し始める前に、土台の形を人の目で確かめておくわけです。なお CI などの自動実行（`--test-run`）では、標準の Test-Run オーバーライドに従ってこのゲートも自動承認されます。ゲートでの差し戻しや「現状で承認」といった判断の仕組みは、別記事「[承認ゲート](https://qiita.com/takeshishimada/private/cd6827700443c9987fd7)」で扱います。
+ゲートは、その Bolt の **設計成果物と生成コードをまとめて** 対象にします。機能を足し始める前に、土台の形を人の目で確かめておくわけです。このゲートを自動で通す手段はありません。ゲートでの差し戻しや「現状で承認」といった判断の仕組みは、別記事「[承認ゲート](https://qiita.com/takeshishimada/items/cd6827700443c9987fd7)」で扱います。
 
 ## 自律モードの選択
 
@@ -88,7 +88,7 @@ Construction に入ると、最初の Bolt（ウォーキングスケルトン�
 
 `gated` ならスケルトン以後の Bolt にもゲートが出て、`autonomous` ならゲートは省かれます。ただし **コード生成が失敗したときは、モードに関わらず必ず停止して人に問い合わせます**（halt-and-ask）。autonomous でも例外的に人へ確認する唯一のケースです。
 
-最初の1本は必ず人が確認し、その経験を踏まえてどこまで自律に任せるかを選びます。ゲートと選択を直後に組み合わせているのは、この二段構えを成り立たせるためです。autonomous モードで独立した Bolt を並列に走らせる仕組みは別記事「[並列実行](https://qiita.com/takeshishimada/private/d179ca1bde4b047adf6f)」で、どこまで自律に寄せるかという運用上の見極めは別記事「[導入判断](https://qiita.com/takeshishimada/private/cef6755e8e23a557f4de)」で扱います。
+最初の1本は必ず人が確認し、その経験を踏まえてどこまで自律に任せるかを選びます。ゲートと選択を直後に組み合わせているのは、この二段構えを成り立たせるためです。autonomous モードで独立した Bolt を並列に走らせる仕組みは別記事「[並列実行](https://qiita.com/takeshishimada/items/d179ca1bde4b047adf6f)」で、どこまで自律に寄せるかという運用上の見極めは別記事「[導入判断](https://qiita.com/takeshishimada/items/cef6755e8e23a557f4de)」で扱います。
 
 ## 方針（stance）の判定
 
@@ -113,7 +113,7 @@ stance の判定は、決定論的に動くエンジンが唯一、自分では�
 
 方針が競合したときは practices（チームが定めた作法。後述）が勝ちます。`bolt-plan.md` がある Bolt にスケルトンマーカーを付けていても、チーム practices が現在のスコープで skeleton-off と言っているなら、コンダクターはマーカーではなく practices から stance を判定し、`PRACTICES_OVERRIDE` を監査イベントに記録します。practices はチームの恒常的な声であり、bolt-plan のマーカーは一回のワークフローの解釈にすぎないからです。
 
-なお scope 別の既定はソース内で記述が食い違っています。`conductor.md` の散文は `infra` をスケルトン側に挙げていませんが、コード `orchestrate.ts` は `infra` を含みます。上表はコードを一次根拠に `infra` をグリーンフィールド側に置いています。
+なお上表はスコープ名を列挙したものではなく、各スコープのファイルが持つ `skeleton:` フィールド（`on` / `off`）の実測です。かつてはスコープ名の集合がコードに直接書かれていましたが、いまはスコープ定義の側が持つデータで決まります。スコープを増やしても、そのファイルに `skeleton:` を書けばこの表に加わります。
 
 ## 方針（stance）の出どころ
 
@@ -125,12 +125,12 @@ stance の判定は、決定論的に動くエンジンが唯一、自分では�
 
 | ファイル | 内容 |
 | --- | --- |
-| [`aidlc-common/stages/inception/delivery-planning.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/stages/inception/delivery-planning.md) | デリバリープランニング。ウォーキングスケルトンの定義、経済的な Bolt 順序、`bolt-plan.md` のマーカーと確信仮説 |
-| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/protocols/stage-protocol.md) | ステージプロトコル。ウォーキングスケルトン・ゲート、自律モードの選択、halt-and-ask |
-| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/conductor.md) | コンダクターの行動規範。`gate: "unresolved"` の分類手順と `PRACTICES_OVERRIDE` |
-| [`aidlc-common/stages/inception/practices-discovery.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/aidlc-common/stages/inception/practices-discovery.md) | 作法の発見。`## Walking Skeleton` stance の収集と承認ゲート |
-| [`memory/org.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/memory/org.md) | 組織レベルの既定値。スコープ別の stance |
-| [`knowledge/aidlc-delivery-agent/workflow-planning-guide.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/core/knowledge/aidlc-delivery-agent/workflow-planning-guide.md) | デリバリーエージェントの計画ガイド。walking-skeleton-first ヒューリスティック（Cockburn） |
+| [`aidlc-common/stages/inception/delivery-planning.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/inception/delivery-planning.md) | デリバリー計画。ウォーキングスケルトンの定義、経済的な Bolt 順序、`bolt-plan.md` のマーカーと確信仮説 |
+| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol.md) | ステージプロトコル。ウォーキングスケルトン・ゲート、自律モードの選択、halt-and-ask |
+| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/conductor.md) | コンダクターの行動規範。`gate: "unresolved"` の分類手順と `PRACTICES_OVERRIDE` |
+| [`aidlc-common/stages/inception/practices-discovery.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/inception/practices-discovery.md) | 作法の発見。`## Walking Skeleton` stance の収集と承認ゲート |
+| [`memory/org.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/memory/org.md) | 組織レベルの既定値。スコープ別の stance |
+| [`knowledge/aidlc-delivery-agent/workflow-planning-guide.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/knowledge/aidlc-delivery-agent/workflow-planning-guide.md) | デリバリーエージェントの計画ガイド。walking-skeleton-first ヒューリスティック（Cockburn） |
 
 ---
 

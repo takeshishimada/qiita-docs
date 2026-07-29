@@ -17,13 +17,17 @@ ignorePublish: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 6 月時点の v2.1.3（コミット `c95070e`、`core/`）を参照しています。Kiro・Codex 実装は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+
+:::note info
+**参照版を変更しました（2026 年 7 月 28 日）** — 本連載の基準を **v2.1.3**（コミット `c95070e`）から **2.5.11**（コミット `9f91454`）へ切り替えました。
+:::
 
 ---
 
 ## 概要
 
-AI-DLC v2 は、アイデアから動くシステムまでの開発ライフサイクルを、AI と人で構造化して進める方法論です。AWS labs が `awslabs/aidlc-workflows` として OSS で公開しており、その本体は、いくつもの部品から組み上がっています。すなわち、5つのフェーズと32のステージ、それを担う13体のエージェント、進行を制御する決定論的なエンジン、止められる唯一の承認ゲート、そして一度の是正を次に活かす学習ループです。
+AI-DLC v2 は、アイデアから動くシステムまでの開発ライフサイクルを、AI と人で構造化して進める方法論です。AWS Labs が `awslabs/aidlc-workflows` として OSS で公開しており、その本体は、いくつもの部品から組み上がっています。すなわち、5つのフェーズと32のステージ、それを担う14体のエージェント、進行を制御する決定論的なエンジン、止められる唯一の承認ゲート、そして一度の是正を次に活かす学習ループです。
 
 本連載は、この v2 を**実装から読み解く**試みです。解説ドキュメントではなく、`core/` のソースコードと規範ルールを正本に、「実際にどう動くか」を一つずつ確かめながら全体像へ近づきます。この記事では、連載が何を・誰のために扱い、どの順で読めるのかを案内します。
 
@@ -33,7 +37,7 @@ AI にコードを書かせること自体は、もう特別ではありませ�
 
 具体的には、ワークフローを**初期化・発想・構想・構築・運用**の5フェーズ32ステージに区切り、各ステージを専門のエージェントが担います。次にどのステージへ進むかは決定論的なエンジンが決め、AI には任せません。初期化を除く各ステージの終わりには承認ゲートが置かれ、人が「承認」と言うまで先に進みません。そして人が下した是正は学習ループを通じて恒久的なルールになり、次のワークフローから効きます。こうした仕組みはどれも、「AI の速度を活かしつつ、人が置いていかれない」状態を一貫して狙っています。
 
-本連載が対象にするのは、この方法論の **Claude Code 実装**です。AI-DLC v2 の本体は `core/` というハーネス中立のディレクトリに一度だけ書かれ、そこから Claude Code・Kiro CLI・Codex CLI の3種類の配布物が生成されます。Kiro・Codex 実装は記述が異なる場合があるため対象外とします。
+本連載が対象にするのは、この方法論の **Claude Code 実装**です。AI-DLC v2 の本体は `core/` というハーネス中立のディレクトリに一度だけ書かれ、そこから Claude Code・Kiro CLI・Kiro IDE・Codex CLI・opencode の5種類の配布物が生成されます。Claude Code 以外の実装は記述が異なる場合があるため対象外とします。
 
 ## 想定する読者
 
@@ -45,7 +49,7 @@ AI にコードを書かせること自体は、もう特別ではありませ�
 
 事実の正本は、一次資料である `core/` のソースコードと `CHANGELOG.md` です。解説ドキュメント（`docs/` 配下）は実装と食い違うことがあるため、事実の根拠には使いません。数値や担当は実装で裏を取り、確証が持てないものは推測と区別して正直に示します。
 
-参照する版は v2.1.3（コミット `c95070e`）にピン留めしています。OSS 実装は短い周期で更新が続いており、たとえば指示の種類や監査イベントの数のように、版によって動く数値があります。引用する際は版を添え、最新の状態は公式リポジトリで確認できるようにしています。
+参照するのは 2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11）です。版番号ではなく日付とコミットで固定しているのは、この実装が短い周期で更新され続けていて、版番号だけでは指し先が一意に決まらないからです。たとえばエージェントの数や監査イベントの数のように、時点によって動く数値があります。引用する際は時点を添え、最新の状態は公式リポジトリで確認できるようにしています。
 
 ## 記事の歩き方
 
@@ -55,31 +59,35 @@ AI にコードを書かせること自体は、もう特別ではありませ�
 | --- | --- | --- |
 | 01 | [設計思想](https://qiita.com/takeshishimada/items/4c8c4ae93b4184588ee6) | なぜこの形なのか。主権・予測可能性・学習という三つの原則 |
 | 02 | [概念マップ](https://qiita.com/takeshishimada/items/6391a320609276d0cfb6) | 全体像を5つの観点で見渡す索引 |
-| 03 | [工程とエージェント](https://qiita.com/takeshishimada/items/418d7b9e17192e8add85) | 5フェーズ32ステージと、それを担う13体のエージェント |
+| 03 | [工程とエージェント](https://qiita.com/takeshishimada/items/418d7b9e17192e8add85) | 5フェーズ32ステージと、それを担う14体のエージェント |
 | 04 | [進行の中核](https://qiita.com/takeshishimada/items/c3ac7c2223e5c7020d82) | 決定論的なエンジンと、それを実行するコンダクターの分離。指示で回る制御ループ |
 | 05 | [スコープ](https://qiita.com/takeshishimada/items/c232fb2e994e7b567a5c) | 9種のスコープが、どのステージを通すかを切り替える |
 | 06 | [深さ](https://qiita.com/takeshishimada/items/f2246466b9e3bdef570b) | 同じ工程をどこまで作り込むか、3段階の深さ |
 | 07 | [成果物の流れ](https://qiita.com/takeshishimada/items/46feb553f907f9eedd14) | intent からコードへ、成果物が詳細化されていく連結 |
 | 08 | [ウォーキングスケルトン](https://qiita.com/takeshishimada/items/7a24030b9d8905f379ed) | 最初の Bolt（構築の実行単位）で端から端まで通し、土台を先に確かめる |
 | 09 | [ブラウンフィールド](https://qiita.com/takeshishimada/items/0a22742c273797429aee) | 既存コードベースを起点にする工程と安全策 |
-| 10 | [承認ゲート](https://qiita.com/takeshishimada/private/cd6827700443c9987fd7) | ワークフローを止められる唯一の停止点。差し戻しと「現状で承認」 |
-| 11 | [センサー](https://qiita.com/takeshishimada/private/5f8dbb62f25c1a09a257) | 保存ごとに自動で走る、止めない助言チェック |
-| 12 | [レビュアー](https://qiita.com/takeshishimada/private/624d83e946e86e4b1553) | 専任2体が READY／NOT-READY で添える、非停止の品質判定 |
-| 13 | [フェーズ境界検証](https://qiita.com/takeshishimada/private/f2f4e426dd542c5b6765) | フェーズの継ぎ目で、上流から下流への鎖をたどる |
-| 14 | [ルールとナレッジ](https://qiita.com/takeshishimada/private/33f3b2b401d4d3c1c266) | 守るルール（push）と参照するナレッジ（pull）の違い |
-| 15 | [学習ループ](https://qiita.com/takeshishimada/private/dd7f3d034ee2c137cff5) | 一度の是正を恒久ルールに変え、次のワークフローに効かせる |
-| 16 | [状態と監査](https://qiita.com/takeshishimada/private/72234648bb4400cedf53) | 進捗を記録する状態ファイルと、追記専用の監査ログ |
-| 17 | [限界と注意点](https://qiita.com/takeshishimada/private/7b7582e2dfac5d942eda) | 実装に降りて初めて見える、いまの限界と版依存 |
-| 18 | [導入判断](https://qiita.com/takeshishimada/private/cef6755e8e23a557f4de) | 案件タイプとチームから見た、入れるべきかの判断軸 |
+| 10 | [承認ゲート](https://qiita.com/takeshishimada/items/cd6827700443c9987fd7) | ワークフローを止められる唯一の停止点。差し戻しと「現状で承認」 |
+| 11 | [センサー](https://qiita.com/takeshishimada/items/5f8dbb62f25c1a09a257) | 保存ごとに自動で走る、止めない助言チェック |
+| 12 | [レビュアー](https://qiita.com/takeshishimada/items/624d83e946e86e4b1553) | 専任2体が READY／NOT-READY で添える、非停止の品質判定 |
+| 13 | [フェーズ境界検証](https://qiita.com/takeshishimada/items/f2f4e426dd542c5b6765) | フェーズの継ぎ目で、上流から下流への鎖をたどる |
+| 14 | [ルールとナレッジ](https://qiita.com/takeshishimada/items/33f3b2b401d4d3c1c266) | 守るルール（push）と参照するナレッジ（pull）の違い |
+| 15 | [学習ループ](https://qiita.com/takeshishimada/items/dd7f3d034ee2c137cff5) | 一度の是正を恒久ルールに変え、次のワークフローに効かせる |
+| 16 | [状態と監査](https://qiita.com/takeshishimada/items/72234648bb4400cedf53) | 進捗を記録する状態ファイルと、追記専用の監査ログ |
+| 17 | [限界と注意点](https://qiita.com/takeshishimada/items/7b7582e2dfac5d942eda) | 実装に降りて初めて見える、いまの限界と版依存 |
+| 18 | [導入判断](https://qiita.com/takeshishimada/items/cef6755e8e23a557f4de) | 案件タイプとチームから見た、入れるべきかの判断軸 |
 
-はじめは設計思想（01）と概念マップ（02）で全体の見取り図をつかみ、そこから関心に応じて各記事へ降りるのがおすすめです。このほかに、構築を並列で回す「[並列実行](https://qiita.com/takeshishimada/private/d179ca1bde4b047adf6f)」を、後半の任意の深掘りとして用意しています。
+はじめは設計思想（01）と概念マップ（02）で全体の見取り図をつかみ、そこから関心に応じて各記事へ降りるのがおすすめです。
+
+このほかに、後半の任意の深掘りとして4本を用意しています。構築を並列で回す「[並列実行](https://qiita.com/takeshishimada/items/d179ca1bde4b047adf6f)」、エージェント同士の協働のかたちを扱う「協働のトポロジー」、工程を外から足す「プラグイン機構」、エージェントがどのモデルで動くかを決める「エージェント階層」です。本編を読み終えたあと、関心のあるものだけ拾えば十分です。
+
+また、全32ステージを番号・主担当つきで引ける「カタログ」を、随時参照用のリファレンスとして置いています。
 
 ## 参照元
 
 | ファイル | 内容 |
 | --- | --- |
-| [`awslabs/aidlc-workflows`](https://github.com/awslabs/aidlc-workflows/tree/v2.1.3) | 一次資料のリポジトリ（本連載は `core/` の Claude Code 実装を対象に v2.1.3 を参照） |
-| [`CHANGELOG.md`](https://github.com/awslabs/aidlc-workflows/blob/v2.1.3/CHANGELOG.md) | バージョン履歴。版によって動く数値（指示・監査イベント等）の経緯 |
+| [`awslabs/aidlc-workflows`](https://github.com/awslabs/aidlc-workflows/tree/9f91454) | 一次資料のリポジトリ（本連載は `core/` の Claude Code 実装を対象に、2026 年 7 月 27 日時点のコミットを参照） |
+| [`CHANGELOG.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/CHANGELOG.md) | バージョン履歴。版によって動く数値（指示・監査イベント等）の経緯 |
 
 ---
 
