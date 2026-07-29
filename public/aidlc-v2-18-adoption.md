@@ -133,7 +133,7 @@ flowchart TD
 | [`core/sensors/`](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/sensors) | センサー5種すべて助言（advisory・止めない）|
 | [`core/agents/`](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/agents)（14ファイル）| エージェント14体の `tier:` 宣言（judgment 9／balanced 2／templated 3）。core は素のモデル名を持たず、ビルドが各ハーネスのキーへ投影する |
 | [`dist/claude/.claude/settings.json`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/dist/claude/.claude/settings.json) | ハーネス固有の出荷設定。Fable・Opus・Sonnet のモデル ID に付く `[1m]`（Haiku は据え置き）、`AWS_REGION`、事前承認ツール |
-| [`tools/aidlc-version.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-version.ts) | `AIDLC_VERSION = "2.1.7"` |
+| [`tools/aidlc-version.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-version.ts) | `AIDLC_VERSION = "2.5.11"` |
 | [`tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-utility.ts) | 旧版検出時の archive-and-reinit 促しと「pre-1.0 no-migration policy」 |
 | [`tools/aidlc-lib.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-lib.ts) | 配布物5種（Claude Code・Kiro CLI・Kiro IDE・Codex CLI・opencode）。ハーネスのディレクトリは4種（Kiro の2つが `.kiro` を共有）|
 | [`CHANGELOG.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/CHANGELOG.md) | （core では裏取り不可の補足）2.1.3 のアーティファクト・ガード（破壊的変更）、能力の高いモデル前提 |
