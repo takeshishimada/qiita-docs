@@ -6,11 +6,13 @@ tags:
   - AIDLC
   - AI-DLC
 private: false
-updated_at: ''
-id: null
+updated_at: '2026-07-30T10:24:56+09:00'
+id: 0e2966be3c9295941509
 organization_url_name: null
 slide: false
 ignorePublish: false
+posting_campaign_uuid: null
+agreed_posting_campaign_term: false
 ---
 
 > **本記事の位置づけ** — 本記事は、`awslabs/aidlc-workflows` リポジトリの規範ルールおよび利用ガイドを素材として、筆者が AI を活用して読み解き、まとめた解釈です。AWS が公式に発表した方法論ではなく、一次資料の翻訳・要約でもありません。
