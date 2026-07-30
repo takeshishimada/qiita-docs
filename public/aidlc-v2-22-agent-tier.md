@@ -137,5 +137,5 @@ Kiro では**モデルのピンをすべて外しました**。指定したモ�
 
 ## 関連記事
 
-**前の記事**: プラグイン機構
+**前の記事**: [プラグイン機構](https://qiita.com/takeshishimada/items/0e2966be3c9295941509)
 **目次**: [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad)
