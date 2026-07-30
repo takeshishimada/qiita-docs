@@ -145,6 +145,6 @@ Claude と Codex にはプラグインの仕組みが元々あるので、その
 
 ## 関連記事
 
-**前の記事**: 協働のトポロジー
-**次の記事**: エージェント階層
+**前の記事**: [協働のトポロジー](https://qiita.com/takeshishimada/items/47e11209aed038250b7a)
+**次の記事**: [エージェント階層](https://qiita.com/takeshishimada/items/6d7e524276eb7cd72052)
 **目次**: [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad)

@@ -154,5 +154,5 @@ contribution ファイルには、もう一つの役割があります。**完�
 ## 関連記事
 
 **前の記事**: [並列実行](https://qiita.com/takeshishimada/items/d179ca1bde4b047adf6f)
-**次の記事**: プラグイン機構
+**次の記事**: [プラグイン機構](https://qiita.com/takeshishimada/items/0e2966be3c9295941509)
 **目次**: [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad)

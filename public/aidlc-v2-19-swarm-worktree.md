@@ -131,5 +131,5 @@ halt-and-ask は、自律モードでも失敗したら必ず止まって人に�
 ## 関連記事
 
 **前の記事**: [導入判断](https://qiita.com/takeshishimada/items/cef6755e8e23a557f4de)
-**次の記事**: 協働のトポロジー
+**次の記事**: [協働のトポロジー](https://qiita.com/takeshishimada/items/47e11209aed038250b7a)
 **目次**: [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad)
