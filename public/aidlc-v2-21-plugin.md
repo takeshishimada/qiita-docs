@@ -2,11 +2,11 @@
 title: AIで紐解くAWS AI-DLC v2：プラグイン機構
 tags:
   - AI
-  - ClaudeCode
-  - AIDLC
   - AI-DLC
+  - AIDLC
+  - ClaudeCode
 private: false
-updated_at: '2026-07-30T10:24:56+09:00'
+updated_at: '2026-07-30T10:38:38+09:00'
 id: 0e2966be3c9295941509
 organization_url_name: null
 slide: false
