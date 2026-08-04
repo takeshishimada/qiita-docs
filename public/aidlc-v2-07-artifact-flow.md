@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -89,7 +89,7 @@ flowchart LR
 
 `requirements` を消費するステージが複数あっても、実体ファイルは生産者ディレクトリの1つだけ。消費側は全員その住所を名指しします。コピーは作られません。
 
-AI-DLC v2 には「成果物に安定IDを振り、フェーズごとに複写（copy-forward）して履歴を残す」といった仕組みは**ありません**。`core/` と `CHANGELOG.md` を `copy-forward` / `stable id` / `provenance` で検索しても、該当する実装は出てきません。連結の実体は複写ではなく、**1か所に住み、語彙名で参照される**という、この物理配置と名指しの組み合わせそのものです。
+AI-DLC v2 には「成果物に安定IDを振り、フェーズごとに複写（copy-forward）して履歴を残す」といった仕組みは**ありません**。`core/` を `copy-forward` / `stable id` で検索しても、該当する実装は出てきません。連結の実体は複写ではなく、**1か所に住み、語彙名で参照される**という、この物理配置と名指しの組み合わせそのものです。
 
 ## 存在しない入力の扱い
 
@@ -106,7 +106,7 @@ AI-DLC v2 には「成果物に安定IDを振り、フェーズごとに複写�
 
 `required: false` の任意の入力が実在しない場合は、どちらにも載らず黙って落ちます。無くてもよい入力が無いことは、欠落ではないからです。
 
-この分け方があると、**コンダクターは読めないパスを渡されません**。不在は失敗した読み取りではなく、データとして届きます。復旧の手順にも「生産者がスコープ外なら、再実行という選択肢は無い。フォールバックで進め、欠けた成果物の中身を発明するな」という分岐が加わりました。9つのステージ本体も、各入力を「あれば読む」形に書き換えられ、無かった場合に何を代わりに使うかが明記されています。
+この分け方があると、**コンダクターは読めないパスを渡されません**。不在は失敗した読み取りではなく、データとして届きます。復旧の手順にも「生産者がスコープ外なら、再実行という選択肢は無い。フォールバックで進め、欠けた成果物の中身を発明するな」という分岐があります。9つのステージ本体も、各入力を「あれば読む」形で書かれており、無かった場合に何を代わりに使うかが明記されています。
 
 ## 必ず作るとは限らない成果物
 
@@ -126,7 +126,7 @@ AI-DLC v2 には「成果物に安定IDを振り、フェーズごとに複写�
 
 ステージ側は `produces_kinds` というフィールドで、どの成果物がどの種類に効くかを宣言します。機能設計の例で言えば、業務ロジックのモデルは `service`／`ui`／`library` に効き、画面部品は `ui` にだけ効く、という具合です。
 
-種類を付けなければ、あるいはその成果物が表に載っていなければ、従来どおり全部を要求します。**既存のワークフローの挙動は変わりません。** ある作業単位について必要な成果物が1つも残らない場合、そのステージはその作業単位には適用されないものとして扱われます。
+種類を付けなければ、あるいはその成果物が表に載っていなければ、全部を要求します。ある作業単位について必要な成果物が1つも残らない場合、そのステージはその作業単位には適用されないものとして扱われます。
 
 ## 作業単位ごとのパス解決
 
@@ -168,20 +168,19 @@ per-unit かどうかは、消費するステージではなく**所有者（生
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/knowledge/aidlc-shared/ai-dlc-principles.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/knowledge/aidlc-shared/ai-dlc-principles.md) | 5フェーズの狙いと主要な成果。原則3「Traceable artifacts」 |
-| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-orchestrate.ts) | 成果物パスの解決。`resolveArtifactPath`（住所＝所有者の下）・`resolveConsumePath`（生産者は 1:1 で `[0]` 確定）・`isPerUnit`／`{unit-name}` の差し込み・`buildRunStageDirective`（発行時に名前→パス） |
-| [`core/tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-graph.ts) | グラフは成果物を語彙名で保持。`producersOf`／`consumersOf`（名前で引く）・`validateScope`（生産者のいない consumes をエラー化し 1:1 を守らせる） |
-| [`core/aidlc-common/protocols/stage-definition.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-definition.md) | 発行時に消費物を実在で二分する規約。`consumes_absent` の `expected` 真偽の定義、任意の入力が不在なら黙って落とす旨 |
-| [`core/tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-directive.ts) | 指示の凍結契約。`consumes_absent?` の型（`{path, expected}` の配列）とランタイム検証 |
-| [`core/aidlc-common/protocols/stage-protocol-recovery.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol-recovery.md) | 復旧の手順。生産者がスコープ外なら再実行という選択肢は無く、フォールバックで進め成果物の中身を発明しない分岐 |
-| [`core/aidlc-common/stages/inception/requirements-analysis.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/inception/requirements-analysis.md) | `produces`／`consumes`（`conditional_on: brownfield` 付き）の実例 |
-| [`core/aidlc-common/stages/ideation/intent-capture.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/ideation/intent-capture.md) | 鎖の起点。`consumes: []`（何も消費しない） |
-| [`core/aidlc-common/stages/construction/functional-design.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/construction/functional-design.md) | per-unit ステージ（`for_each: unit-of-work`）の実例。`optional_produces`（`frontend-components`）と `produces_kinds`（成果物ごとに効く種類の対応表）の実例でもある |
-| [`core/tools/aidlc-stage-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-stage-schema.ts) | フロントマターの検証。`optional_produces`／`produces_kinds` を含む省略可能フィールドの定義 |
-| [`core/tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-state.ts) | `Construction Iteration` の記録（`unit-major` のときだけ作業単位単位の巡回になり、それ以外は従来どおり） |
-| [`core/aidlc-common/stages/construction/code-generation.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/construction/code-generation.md) | per-unit の終端。`outputs:` が記録ディレクトリ相対で engine-resolved である旨を明記 |
-| [`core/sensors/aidlc-upstream-coverage.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/sensors/aidlc-upstream-coverage.md) | `consumes:` の上流成果物が出力本文で参照されているかを保存ごとに検査 |
-| [`CHANGELOG.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/CHANGELOG.md) | 語彙名→記録ディレクトリ解決、生産者が住所を持つ規約、per-unit `for_each` のエンジン駆動（2.1.2）、codekb 配置の導入経緯、`consumes_absent` による不在入力の分離（2.1.7） |
+| [`core/knowledge/aidlc-shared/ai-dlc-principles.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/knowledge/aidlc-shared/ai-dlc-principles.md) | 5フェーズの狙いと主要な成果。原則3「Traceable artifacts」 |
+| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-orchestrate.ts) | 成果物パスの解決。`resolveArtifactPath`（住所＝所有者の下）・`resolveConsumePath`（生産者は 1:1 で `[0]` 確定）・`isPerUnit`／`{unit-name}` の差し込み・`buildRunStageDirective`（発行時に名前→パス） |
+| [`core/tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-graph.ts) | グラフは成果物を語彙名で保持。`producersOf`／`consumersOf`（名前で引く）・`validateScope`（生産者のいない consumes をエラー化し 1:1 を守らせる） |
+| [`core/aidlc-common/protocols/stage-definition.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-definition.md) | 発行時に消費物を実在で二分する規約。`consumes_absent` の `expected` 真偽の定義、任意の入力が不在なら黙って落とす旨 |
+| [`core/tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-directive.ts) | 指示の凍結契約。`consumes_absent?` の型（`{path, expected}` の配列）とランタイム検証 |
+| [`core/aidlc-common/protocols/stage-protocol-recovery.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol-recovery.md) | 復旧の手順。生産者がスコープ外なら再実行という選択肢は無く、フォールバックで進め成果物の中身を発明しない分岐 |
+| [`core/aidlc-common/stages/inception/requirements-analysis.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/stages/inception/requirements-analysis.md) | `produces`／`consumes`（`conditional_on: brownfield` 付き）の実例 |
+| [`core/aidlc-common/stages/ideation/intent-capture.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/stages/ideation/intent-capture.md) | 鎖の起点。`consumes: []`（何も消費しない） |
+| [`core/aidlc-common/stages/construction/functional-design.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/stages/construction/functional-design.md) | per-unit ステージ（`for_each: unit-of-work`）の実例。`optional_produces`（`frontend-components`）と `produces_kinds`（成果物ごとに効く種類の対応表）の実例でもある |
+| [`core/tools/aidlc-stage-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-stage-schema.ts) | フロントマターの検証。`optional_produces`／`produces_kinds` を含む省略可能フィールドの定義 |
+| [`core/tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-state.ts) | `Construction Iteration` の記録（`unit-major` のときだけ作業単位単位の巡回になり、それ以外は従来どおり） |
+| [`core/aidlc-common/stages/construction/code-generation.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/stages/construction/code-generation.md) | per-unit の終端。`outputs:` が記録ディレクトリ相対で engine-resolved である旨を明記 |
+| [`core/sensors/aidlc-upstream-coverage.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/sensors/aidlc-upstream-coverage.md) | `consumes:` の上流成果物が出力本文で参照されているかを保存ごとに検査 |
 
 ---
 

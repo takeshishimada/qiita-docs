@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -52,14 +52,14 @@ AIエージェントに作業を任せると、仕様の曖昧さを埋めたり
 
 ## 学習ゲートの手順
 
-各ステージの作業が終わると、承認ゲートの直前に学習ゲートが走ります。次の順で進みます。
+承認ゲートを持つステージでは、その直前に学習ゲートが走ります。自動で進む初期化のステージと、単独で走らせたステージには承認ゲートが無いので、学習ゲートも走りません。作業単位ごとに回るステージでは、最後の1回にまとめられます。次の順で進みます。
 
 1. **候補の抽出** — ツール（`aidlc-learnings.ts surface`）が学習ログを読み、Interpretations・Deviations・Tradeoffs の各エントリを候補として原文のまま提示します。Open questions は未解決の調べ物なので、候補にはなりません。多くのワークフローでは残すべき候補が出ないのが普通です。
-2. **選択** — 人が候補ごとに残すか捨てるかを選び、必要なら文言を直します。保存先の範囲（後述の project／team）もここで選びます。
-3. **矛盾検査** — 残すと決めたルール候補について、コンダクターが組織ルール（`org.md`）の同じ話題の節と1行ずつ照合します（`conflict-check`）。矛盾があれば、その組織ルールを示したうえで、人が書き直す・取り下げる・人の判断で押し通す（`escalate`）のいずれかを選びます。センサー候補には照合の対象がないので、この検査を経ずに進みます。
+2. **選択** — 人が候補ごとに残すか捨てるかを選び、必要なら文言を直します。保存先の範囲（後述の project／team）もここで選びます。あわせて、自由記述で「次に活かすことはありますか」と聞かれます。**ここが学習のもう一つの入口**で、ログに残っていない気づきを人が直接足せます。
+3. **矛盾検査** — 残すと決めたルール候補について、コンダクターが組織ルール（`org.md`）の同じ話題の節と1行ずつ照合します（`conflict-check`）。矛盾があれば、その組織ルールを示したうえで、人が書き直す・取り下げる・人の判断で押し通す（`escalate`）のいずれかを選びます。押し通したものも保存へ進みます。センサー候補には照合の対象がないので、この検査を経ずに進みます。
 4. **保存** — ツール（`aidlc-learnings.ts persist`）が、矛盾のない候補を保存します。書き込みはすべてロックの中でツールを通して行われ、`RULE_LEARNED` などの監査イベントが記録されます。同じ候補の二重書き込みは自動で防がれます。
 
-学習ゲートは助言であって、承認ゲートを止めません。候補が出なければ、そのまま承認へ進みます。
+学習ゲートは助言であって、承認ゲートを止めません。候補がゼロでも「次に活かすことはありますか」という問いかけ自体は必ず出ます。省略も自己判断での打ち切りもできません。
 
 ## 確定学習の保存先
 
@@ -89,15 +89,19 @@ AIエージェントに作業を任せると、仕様の曖昧さを埋めたり
 
 学習をセンサーにするとき、ステージのチェックは **two-write install** という二つの書き込みで取り付けられます。一つはセンサーの本体で、project 範囲のマニフェスト `aidlc-<id>.md` を新しく作ります。これは対象成果物を `matches:` のグロブ（ファイル名のパターン指定／ワイルドカード）で絞ります。もう一つが結びつけで、そのセンサーの id を、元になったステージの `sensors:` フロントマター一覧へ追記します。
 
-二つの書き込みは同じロックの中でまとめて行われ、監査イベント `SENSOR_PROPOSED` が記録されます。取り付けられたセンサーは、次のワークフローのコンパイル（ステージ定義やルールを事前にグラフへ固定する処理）時に束ねられ、そこから走りはじめます。
+二つの書き込みは同じロックの中でまとめて行われ、監査イベント `SENSOR_PROPOSED` が記録されます。取り付けられたセンサーは、次のワークフローのコンパイル（ステージ定義とセンサーの束ねを事前にグラフへ固定する処理）時に束ねられ、そこから走りはじめます。
 
 このときステージファイルの本文（`## Steps` など）は書き換えません。増えるのはフロントマターの取り込み一覧だけです。ステージ本体を不変に保つのは、フレームワークの更新と現場の追記がぶつからないようにするためです。同じステージが多くのプロジェクトで走るので、本体に手を入れると方法論が各所でばらばらに枝分かれしてしまいます。
 
-## 次のワークフローからの反映
+## 反映が始まるタイミング
 
-学習は、設計上「次のワークフローから」効きます。書き込み自体は学習ゲートで即座に行われますが、反映は次回からです。ルールは前述のとおり次回ステージの開始時に読み込まれ、センサーも次のコンパイルから束ねられます。
+書き込み自体は学習ゲートで即座に行われます。効き始める時点は、ルールとセンサーで違います。
 
-実行中のワークフローに途中からルールを差し込まないのは、すでに承認したステージの前提が崩れてしまうからです。「書き込みは即座、反映は次回」という規律が、走っているワークフローの安定を支えています。なお、ルールがいつ読み込まれるか（事前同梱のルールと、実行側が自分で読むナレッジの違い）は、別記事「[ルールとナレッジ](https://qiita.com/takeshishimada/items/33f3b2b401d4d3c1c266)」で扱います。
+**ルールは次のステージから**です。方法ファイル（`project.md` ／ `team.md`）に積まれた practice を、エンジンが次のステージに入る時点で読み直して届けるので、同じワークフローの続きから効きます。
+
+**センサーは次のワークフローから**です。ステージに束ねる作業がコンパイルを要するので、いま走っているグラフには載りません。
+
+なお、ルールがいつ読み込まれるか（事前同梱のルールと、実行側が自分で読むナレッジの違い）は、別記事「[ルールとナレッジ](https://qiita.com/takeshishimada/items/33f3b2b401d4d3c1c266)」で扱います。
 
 ## 全体像
 
@@ -122,26 +126,26 @@ flowchart TD
         STAGE --> GATE
         GATE --> APP["承認ゲート"]
     end
-    WF1 -.->|"次のワークフローから反映"| WF2
+    WF1 -.->|"センサーは次のワークフローから"| WF2
     subgraph WF2["次のワークフロー"]
         direction TB
-        COMP["コンパイルでルールとセンサーを取り込む"] --> RUN["学習が効いた状態で実行"]
+        COMP["コンパイルでセンサーを取り込む"] --> RUN["学習が効いた状態で実行"]
     end
 ```
 
 ## まとめ
 
-学習ループは、記録・選別・保存の三段で「一度の是正」を「次からの前提」に変えます。コンダクターが学習ログに気づきを書きため、学習ゲートで人が残すものを選び、確定した学習が方法ファイルの practice か、ステージに束ねたセンサーとして保存されます。保存先はルールを読む側と同じなので、学びはそのまま積み上がります。そして反映は常に次のワークフローから始まり、走っている案件の前提は崩れません。
+学習ループは、記録・選別・保存の三段で「一度の是正」を「次からの前提」に変えます。コンダクターが学習ログに気づきを書きため、学習ゲートで人が残すものを選び、確定した学習が方法ファイルの practice か、ステージに束ねたセンサーとして保存されます。保存先はルールを読む側と同じなので、学びはそのまま積み上がります。反映はルールなら次のステージから、センサーなら次のワークフローからです。
 
 ## 参照元
 
 | ファイル | 内容 |
 | --- | --- |
-| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol.md) | §13 学習ゲートの全手順・practice 保存・two-write install |
-| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/conductor.md) | コンダクターの行動規範。`memory.md` への記録責務 |
-| [`tools/aidlc-learnings.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-learnings.ts) | 学習ループツール実装（`surface`／`persist` サブコマンド） |
-| [`knowledge/aidlc-shared/memory-template.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/knowledge/aidlc-shared/memory-template.md) | `memory.md` のテンプレート。4カテゴリの定義 |
-| [`core/memory/`](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/memory)（`org.md`／`project.md`／`team.md`） | 矛盾検査の対象と practice の保存先（project／team） |
+| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | §13 学習ゲートの全手順・practice 保存・two-write install |
+| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/conductor.md) | コンダクターの行動規範。`memory.md` への記録責務 |
+| [`tools/aidlc-learnings.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-learnings.ts) | 学習ループツール実装（`surface`／`persist` サブコマンド） |
+| [`knowledge/aidlc-shared/memory-template.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/knowledge/aidlc-shared/memory-template.md) | `memory.md` のテンプレート。4カテゴリの定義 |
+| [`core/memory/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/memory)（`org.md`／`project.md`／`team.md`） | 矛盾検査の対象と practice の保存先（project／team） |
 
 ---
 

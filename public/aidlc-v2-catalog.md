@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -58,8 +58,8 @@ AI-DLC v2 のワークフローは、5つのフェーズに分かれた32のス�
 | 1.1 | 意図キャプチャ（intent-capture） | 何を・なぜ作るかの意図を捉え、枠組みに整理する | プロダクト |
 | 1.2 | 市場調査（market-research） | 競合や市場規模を調べ、勝ち筋と位置づけを定める | プロダクト |
 | 1.3 | 実現性評価（feasibility） | 技術的な実現性と制約を確かめる | アーキテクト |
-| 1.4 | スコープ定義（scope-definition） | 作る範囲（実行するステージ）を絞る | プロダクト |
-| 1.5 | チーム編成（team-formation） | 必要なエージェント体制を決める | デリバリー |
+| 1.4 | スコープ定義（scope-definition） | 作る機能の範囲と優先順位を決める | プロダクト |
+| 1.5 | チーム編成（team-formation） | 人のチーム編成とモブ計画を決める | デリバリー |
 | 1.6 | ラフモックアップ（rough-mockups） | 主要画面・操作のラフ案を作る | デザイン |
 | 1.7 | 承認・引き継ぎ（approval-handoff） | 発想の成果を承認し、次フェーズへ引き継ぐ | デリバリー |
 
@@ -127,10 +127,10 @@ AI-DLC v2 のワークフローは、5つのフェーズに分かれた32のス�
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/aidlc-common/stages/`](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/aidlc-common/stages)（32本） | 全32ステージの定義（フェーズ・slug・依存・主担当） |
-| [`tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-graph.ts) | ステージの依存グラフとコンパイル順（番号の根拠） |
-| [`aidlc-common/protocols/stage-protocol-recovery.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol-recovery.md) | フェーズ採番（0.1–0.3 … 4.x）の記載 |
-| [`core/agents/`](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/agents)（14ファイル） | エージェント14体（成果物を作る11体＋レビュー専任2体＋コンポーザー1体） |
+| [`core/aidlc-common/stages/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/aidlc-common/stages)（32本） | 全32ステージの定義（フェーズ・slug・依存・主担当） |
+| [`tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-graph.ts) | ステージの依存グラフとコンパイル順（番号の根拠） |
+| [`aidlc-common/protocols/stage-protocol-recovery.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol-recovery.md) | フェーズ採番（0.1–0.3 … 4.x）の記載 |
+| [`core/agents/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/agents)（14ファイル） | エージェント14体（成果物を作る11体＋レビュー専任2体＋コンポーザー1体） |
 
 ---
 

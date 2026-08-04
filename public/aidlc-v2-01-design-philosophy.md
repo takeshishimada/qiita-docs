@@ -19,13 +19,13 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
 ## 概要
 
-AI-DLC v2 の設計思想は、人が主導権を保ったまま AI の速度を活かす、という一点に貫かれています。承認ゲートで意思決定を人に固定し、決定論的なエンジンで進行を予測可能にし、学習ループで同じ失敗を繰り返さない。この三つの原則が設計の背骨です。
+AI-DLC v2 の設計思想は、人が主導権を保ったまま AI の速度を活かす、という一点に貫かれています。承認ゲートで意思決定を人に固定し、決定論的なエンジンで進行を予測可能にし、学習ループで同じ失敗を繰り返さない。この三つが設計の背骨です。
 
 本記事では、それぞれの原則がなぜ必要で、どう噛み合っているのかを読み解きます。
 
@@ -43,7 +43,7 @@ AIにコードを書かせるのは、もう特別なことではありません
 
 ### 人がすべての意思決定を握る
 
-全32ステージのうち、初期化の3つを除く29ステージに承認ゲートがあります。エージェントがどれだけ立派な成果物を作っても、人が「承認」と言わない限りワークフローは先に進みません。
+初期化の3つを除き、そのスコープで通すステージのすべてに承認ゲートが付きます。全32ステージを通すスコープなら、29ステージにゲートがあります。エージェントがどれだけ立派な成果物を作っても、人が「承認」と言わない限りワークフローは先に進みません。
 
 そして、この承認権限は持ち越されません。あるステージで「おすすめで進めて」と承認しても、その許可はそのステージ限りで、次のステージには引き継がれません。自律モードは、人が明示的に「自律で走らせていい」と言ったときだけ有効になります。やや保守的に見えるかもしれませんが、AIが勝手に走り出すリスクと比べれば、毎回ボタンを押す手間のほうがはるかに小さいという判断です。
 
@@ -57,17 +57,17 @@ AIにコードを書かせるのは、もう特別なことではありません
 
 ### 同じ間違いを二度繰り返さない
 
-人がエージェントの間違いを正したとき、その修正がその場限りで消えてしまうのはもったいない話です。AI-DLC v2 には「学習ループ」があり、修正内容を承認ゲートで人に確認したうえで、永続的なルールとして書き込みます。次のワークフローからは、エージェントが同じ間違いを繰り返しません。
+人がエージェントの間違いを正したとき、その修正がその場限りで消えてしまうのはもったいない話です。AI-DLC v2 には「学習ループ」があり、修正内容を学習ゲートで人に確認したうえで、永続的なルールとして書き込みます。以後は、エージェントが同じ間違いを繰り返しません。
 
-ただし、学習が反映されるのは「次のワークフローから」です。今走っているワークフローの途中でルールが変わると、すでに承認したゲートの前提が崩れてしまいます。「書き込みは即座に行うが、反映は次のワークフローから」。この規律が、実行中のワークフローの安定性を担保しています。学習をどう拾い、どこに残すかは別記事「[学習ループ](https://qiita.com/takeshishimada/items/dd7f3d034ee2c137cff5)」で、守るべきルールと参照するナレッジの違いは別記事「[ルールとナレッジ](https://qiita.com/takeshishimada/items/33f3b2b401d4d3c1c266)」で扱います。
+書き込みは学習ゲートでその場で行われます。ただし効き始めるのは、ルールなら次のステージ、センサーなら次のワークフローです。ルールは毎回ファイルから読み直されるのに対し、センサーをステージに束ねるにはコンパイルが要るためです。学習をどう拾い、どこに残すかは別記事「[学習ループ](https://qiita.com/takeshishimada/items/dd7f3d034ee2c137cff5)」で、守るべきルールと参照するナレッジの違いは別記事「[ルールとナレッジ](https://qiita.com/takeshishimada/items/33f3b2b401d4d3c1c266)」で扱います。
 
-## 安定する理由
+## 進行が揺れない理由
 
-「書き込みは即座、反映は次回」という規律は、AI-DLC v2 独自のアイデアではありません。ネットワーク工学でいう三平面アーキテクチャと同じ考え方です。
+進行が会話に揺さぶられないのは、決めることと動かすことを分けているからです。ネットワーク工学でいう三平面アーキテクチャと同じ考え方です。
 
 現代のルーターは仕事を三つに分けています。設定を入れて状態を見る「管理面」、経路を計算する「制御面」、実際にパケットを転送する「データ面」です。経路計算はネットワーク構成が変わったときに一度だけ行い、その結果をテーブルに格納します。パケットが飛んでいる最中に経路を再計算したりはしません。
 
-AI-DLC v2 の構造も、これと同じです。あらかじめ一度だけ「コンパイル」が走り、ステージ定義・ルール・センサー（成果物の保存時に自動で走り、止めずに助言する仕組み）をステージ間の依存グラフへ固定します。実行中はそのグラフを参照するだけで再計算しないため、ワークフローの途中で挙動が変わるということが原理的に起きません。この安心感は、特に複数人で並行して動くような場面で効いてきます。センサーが具体的に何を見ているかは別記事「[センサー](https://qiita.com/takeshishimada/items/5f8dbb62f25c1a09a257)」で扱います。
+AI-DLC v2 の構造も、これと同じです。あらかじめ一度だけ「コンパイル」が走ります。どのステージを通すか、どのルールが効くか、どのセンサー（成果物の保存時に自動で走り、止めずに助言する仕組み）を束ねるかを、ステージ間の依存グラフへ固定します。実行中のエンジンはそのグラフを参照するだけで、経路を計算し直しません。だから会話の途中で工程が入れ替わることが起きません。この安心感は、特に複数人で並行して動くような場面で効いてきます。センサーが具体的に何を見ているかは別記事「[センサー](https://qiita.com/takeshishimada/items/5f8dbb62f25c1a09a257)」で扱います。
 
 ちなみに、この設計のおかげで「回復性」も自然に手に入ります。監査ログ、状態ファイル、成果物が規律正しく書かれているので、セッションが切れても新しいセッションが前回の状態を復元できます。何がどこに記録されるかは別記事「[状態と監査](https://qiita.com/takeshishimada/items/72234648bb4400cedf53)」で扱います。回復性をわざわざ作り込んだのではなく、データの管理規律がそのまま回復性につながっているわけです。
 
@@ -75,7 +75,7 @@ AI-DLC v2 の構造も、これと同じです。あらかじめ一度だけ「�
 
 AI-DLC v2 のエージェントは14体（成果物を作る11体＋レビュー専任2体＋スコープを組むコンポーザー1体）。何十体もの担当範囲が狭い専門家を並べる方式は取っていません。
 
-エージェント間の境界は、情報が失われるポイントだからです。同じアーキテクトが、設計のステージも、それを実装の単位へ分けるステージも担当すれば、ハンドオフ文書が要りません。コンテキストがエージェントの中に残ります。人のチームでも、3〜5人で組んでフィーチャー全体を担当するほうが、大人数のリレーより情報がこぼれません。それと同じ発想です。
+エージェント間の境界は、情報が失われるポイントだからです。同じアーキテクトが、設計のステージも、それを実装の単位へ分けるステージも担当すれば、ハンドオフ文書が要りません。コンテキストがエージェントの中に残ります。人のチームでも、少人数の混成チームがフィーチャー全体を担当するほうが、大人数のリレーより情報がこぼれません。それと同じ発想です。
 
 エージェント同士は直接呼び合いません。委譲は常にコンダクターを通じて行われます。おかげで「誰が誰を呼んだのか」が常に一本のフラットな呼び出し関係で追えますし、再帰的に深くなっていく呼び出しチェーンも構造的に起きません。14体がそれぞれ何を受け持つかは、別記事「[工程とエージェント](https://qiita.com/takeshishimada/items/418d7b9e17192e8add85)」で扱います。
 
@@ -89,7 +89,7 @@ AI-DLC v2 のエージェントは14体（成果物を作る11体＋レビュー
 
 ## どの CLI でも動く移植性
 
-最後は、実装面の思想です。AI-DLC v2 の方法論は `core/` というディレクトリに一度だけ書かれていて、そこからClaude Code、Kiro CLI、Codex CLIそれぞれ向けの配布物が生成されます。どのCLIも特別扱いされず、同じソースから同じルールで出力されます。
+最後は、実装面の思想です。AI-DLC v2 の方法論は `core/` というディレクトリに一度だけ書かれていて、そこから Claude Code、Kiro CLI、Kiro IDE、Codex CLI、opencode それぞれ向けの配布物が生成されます。どの実装も特別扱いされず、同じソースから同じルールで出力されます。
 
 新しいCLIハーネスを追加するのに必要なのは、一つのディレクトリと一つのマニフェストファイルだけです。方法論本体には一切手を入れません。方法論を改善すればすべてのCLIに反映されるし、あるCLIだけ遅れるということもありません。
 
@@ -103,13 +103,13 @@ AI-DLC v2 が実現しようとしているのは、「AIの速度を活かし�
 
 | ファイル | 内容 |
 | --- | --- |
-| `core/` のステージ `.md`（[32本](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/aidlc-common/stages)）／[`tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-graph.ts) | 5フェーズ32ステージとその依存グラフ（コンパイラ） |
-| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol.md) | 承認ゲート（初期化を除く各ステージ末）・深さ・学習ループ |
-| [`core/agents/`](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/agents)（14ファイル） | エージェント14体（成果物を作る11体＋レビュー専任2体＋コンポーザー1体） |
-| [`tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-orchestrate.ts)／[`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/conductor.md) | 決定論的エンジンとコンダクターの分離 |
-| [`tools/aidlc-sensor.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-sensor.ts) | 成果物保存時に走る助言的センサー |
-| [`core/scopes/*.md`](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/scopes)（9ファイル） | スコープ9種とステージごとの実行/スキップ |
-| [`tools/aidlc-lib.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-lib.ts) | ハーネスのディレクトリ4種（`KNOWN_HARNESS_DIRS` ＝ `.claude`/`.kiro`/`.codex`/`.aidlc`）。配布物は5種で、Kiro CLI と Kiro IDE が `.kiro` を共有し、opencode は `.aidlc` を使う |
+| `core/` のステージ `.md`（[32本](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/aidlc-common/stages)）／[`tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-graph.ts) | 5フェーズ32ステージとその依存グラフ（コンパイラ） |
+| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | 承認ゲート（初期化を除く各ステージ末）・深さ・学習ループ |
+| [`core/agents/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/agents)（14ファイル） | エージェント14体（成果物を作る11体＋レビュー専任2体＋コンポーザー1体） |
+| [`tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-orchestrate.ts)／[`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/conductor.md) | 決定論的エンジンとコンダクターの分離 |
+| [`tools/aidlc-sensor.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-sensor.ts) | 成果物保存時に走る助言的センサー |
+| [`core/scopes/*.md`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/scopes)（9ファイル） | スコープ9種とステージごとの実行/スキップ |
+| [`tools/aidlc-lib.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-lib.ts) | ハーネスのディレクトリ4種（`KNOWN_HARNESS_DIRS` ＝ `.claude`/`.kiro`/`.codex`/`.aidlc`）。配布物は5種で、Kiro CLI と Kiro IDE が `.kiro` を共有し、opencode は `.aidlc` を使う |
 
 ---
 

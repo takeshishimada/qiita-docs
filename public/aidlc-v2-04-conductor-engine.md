@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -66,17 +66,18 @@ AI-DLC v2 の進行は、性質の異なる2つの主体が分担して回しま
 
 何をすべきかという知識作業はコンダクター（LLM）が、どのステージを次にやるかというルーティングはエンジン（ツール）が担います。この役割分担が設計思想の核心です。
 
-## 9種の指示
+## 10種の指示
 
 エンジンとコンダクターをつなぐのが指示（directive）です。`aidlc-directive.ts` に定義された固定のインターフェースで、エンジンとコンダクターが同じ1つのファイルを import します。だから両者の間で「やり取りの形」がズレようがありません。指示の定義そのものは状態を持たず、何も発行（emit）せず、I/O もしない純粋な契約です。エンジンは指示を組み立てて検証してから出力し、コンダクターは受け取って検証してから読みます。壊れた指示は黙って見過ごされず、その場でエラーになります。
 
-指示の種類は全9種です。各々が「何を指示するか」を、ソースの型定義から起こします。
+指示の種類は全10種です。各々が「何を指示するか」を、ソースの型定義から起こします。
 
 | kind | 何を指示するか |
 |---|---|
+| `load-steering` | このステージで効くルールの本文を、分割の1回分として届ける（適用したら継続トークンを返し、辿り終えると `run-stage` に至る） |
 | `run-stage` | lead・support エージェントを読み込み、`consumes`（入力成果物）を読み、ステージ本体を実行し、`produces`（出力）を書き、`memory.md` を保つ |
-| `dispatch-subagent` | `run-stage` と同じだが、ステージを Task で名前付きの worker に投げて実行する |
-| `invoke-swarm` | 構築のバッチを、N 個の作業コピー（worktree）に N 人の worker として並列展開する |
+| `dispatch-subagent` | `run-stage` と同じだが、ステージを Task で名前付きのワーカーに投げて実行する |
+| `invoke-swarm` | 構築のバッチを、N 個の作業コピー（worktree）に N 人のワーカーとして並列展開する |
 | `present-gate` | 学習ゲートを回してから承認ゲートを描画する |
 | `ask` | 構造化された質問を描画する（再開の選択・スコープ確認・自律ラダー） |
 | `print` | 文面を逐語で表示して止まる（状況表示やヘルプ） |
@@ -84,16 +85,17 @@ AI-DLC v2 の進行は、性質の異なる2つの主体が分担して回しま
 | `done` | ループを止める（ワークフロー完了、または単一ステージ完了） |
 | `parked` | 長尺ワークフローを現在のステージ境界で一時停止（park）して終える（後述） |
 
-この9種のうち、現行エンジンが実際に発行するのは7種です。`next` のハンドラは `run-stage` / `invoke-swarm` / `ask` / `print` / `error` / `done` ＋ `parked` を発行し、残る `present-gate` / `dispatch-subagent` の2種は「後続の実装段階（wave）で実装する」と明言して除外します。2種は欠落ではなく、型としては固定の契約に含めつつ段階的に実装する途中という位置づけです。
+この10種のうち、現行エンジンが実際に発行するのは8種です。`next` のハンドラは `load-steering` / `run-stage` / `invoke-swarm` / `ask` / `print` / `error` / `done` に `parked` を加えて発行し、残る `present-gate` / `dispatch-subagent` の2種は「後続の実装段階（wave）で実装する」と明言して除外します。欠落ではなく、固定の契約に型としては含まれたまま、まだ発行されていないだけです。
 
 ### run-stage が運ぶもの
 
 発行される指示の圧倒的多数を占めるのが `run-stage` です。これは単に「このステージをやれ」ではなく、ステージ実行に必要なルーティング一式を、コンダクターが再導出せずに済む形で運びます。
 
 - `lead_agent` / `support_agents` — 主担当（Lead）と補佐のエージェント
-- `mode` — `inline` / `subagent` / `pipeline` / `mob`（`agent-team` は型に在るが将来用の予約）。ステージ本体を走らせるあいだの**通信のかたち**を指す。出荷内訳は 28 inline／2 subagent／1 pipeline／1 mob。それぞれの意味は別記事「[工程とエージェント](https://qiita.com/takeshishimada/items/418d7b9e17192e8add85)」で扱います
+- `mode` — `inline` / `subagent` / `pipeline` / `mob`（`agent-team` は型に在るが将来用の予約）。ステージ本体を走らせるあいだの**協働のかたち**（トポロジー）を指す。出荷内訳は 28 inline／2 subagent／1 pipeline／1 mob。それぞれの意味は別記事「[工程とエージェント](https://qiita.com/takeshishimada/items/418d7b9e17192e8add85)」で扱います
 - `gate` — 承認ゲートを敷くか（後述の例外を除き真偽値）
-- `rules_in_context` — このステージで効くルールの解決済みパス
+- `rules_in_context` — このステージで効くルールの解決済みパス。`run-stage` に先立つ `load-steering` で本文が届いており、ここに並ぶのは届いたものの一覧にあたる
+- `context_warnings?` — ペルソナやナレッジのように自分で読みにいくファイルが読めなかったときの警告。ステージは止めずに続ける（ルールの配送失敗は警告ではなく停止になる）
 - `sensors_applicable` — 適用されるセンサーの ID
 - `consumes` / `produces` — 入出力成果物の解決済み `<record>/...` パス。`consumes` に載るのは**ディスク上に実在する入力だけ**
 - `consumes_absent?` — 実在しない必須の入力。1件ずつ `expected` が付き、真なら「生産者が今回のスコープの経路に無い＝不在は設計どおり」、偽なら「生産者は経路上にあるのにファイルが無い＝本当の欠落」。コンダクターに読めないパスを渡さないための分離で、詳しくは別記事「[成果物の流れ](https://qiita.com/takeshishimada/items/46feb553f907f9eedd14)」で扱います
@@ -102,7 +104,7 @@ AI-DLC v2 の進行は、性質の異なる2つの主体が分担して回しま
 - `next_stage` — このステージの次に来る、スコープ内のステージの表示名。承認の選択肢に出る「次へ進む」の文言はここから作られ、最後のステージでは「ワークフローを完了」になる
 - `unit?` — per-unit 構築ステージでエンジンが解決した具体的な作業単位名。作業単位ごとに `run-stage` を回す反復の1イテレーションである目印で、未カバーの作業単位ではゲートが抑止される
 
-ルール（従う義務のある制約）は指示に同梱されて届く一方、ナレッジ（参照用の手法）は指示に載らず、コンダクターが実行時に自分で読みに行きます。この非対称も `run-stage` の設計に表れています。ルールとナレッジの違いは別記事「[ルールとナレッジ](https://qiita.com/takeshishimada/items/33f3b2b401d4d3c1c266)」で、`unit?` の per-unit 解決は別記事「[成果物の流れ](https://qiita.com/takeshishimada/items/46feb553f907f9eedd14)」で扱います。
+ルール（従う義務のある制約）は本文が指示で届く一方、ナレッジ（参照用の手法）は指示にパスが載るだけで、本文はコンダクターが実行時に自分で読みに行きます。この非対称は指示の型にも表れます。ルールには本文を運ぶ `load-steering` があるのに、ナレッジ側は `inline_context_paths` にパスが並ぶだけで、本文を載せるフィールドがありません。ルールとナレッジの違いは別記事「[ルールとナレッジ](https://qiita.com/takeshishimada/items/33f3b2b401d4d3c1c266)」で、`unit?` の per-unit 解決は別記事「[成果物の流れ](https://qiita.com/takeshishimada/items/46feb553f907f9eedd14)」で扱います。
 
 ### 一度だけ渡される実行人格
 
@@ -118,16 +120,24 @@ flowchart TD
     Q --> D["エンジンが状態ファイルとグラフを読み<br/>指示を1つ返す"]
     D --> K{"指示の kind"}
 
+    K -->|"load-steering"| RULE["届いたルール本文を適用<br/>aidlc-orchestrate continue"]
     K -->|"run-stage"| RUN["名指された1手を実行<br/>（エージェントを読みステージ本体を動かす）"]
-    K -->|"ask / print"| HUMAN["質問・文面を人へ提示"]
-    K -->|"error / done"| STOP["停止"]
+    K -->|"invoke-swarm"| SWARM["並列バッチを回す<br/>収束するまで next に戻る"]
+    K -->|"ask"| ASK["質問を人へ提示"]
+    K -->|"print"| PRINT["文面を表示、または<br/>名指されたツールを実行"]
+    K -->|"error / done / parked"| STOP["停止"]
 
+    RULE --> Q
+    SWARM --> Q
+    PRINT --> Q
     RUN --> REP["コンダクターがエンジンに報告<br/>aidlc-orchestrate report"]
-    HUMAN --> REP
+    ASK --> REP
     REP --> Q
 
     STOP --> END(["ループ終了"])
 ```
+
+`report` を通らない経路がいくつかあります。ルールの配送は本文を適用したら `continue` でそのまま問い合わせに戻り、配送が終わったところで `run-stage` が出ます。並列バッチも、途中のバッチでは報告せず収束するまで問い合わせを繰り返します。`print` は表示して止まる形と、名指されたツールを実行してから問い合わせに戻る形の2つがあります。いずれも状態を動かさないので、報告するものがありません。
 
 コンダクター任せだと問い合わせ自体を忘れて脱線しうるため、`done` が返るまでこのループを続けさせる仕組み（フォワーディングループの Stop フック）が別にあります。エンジンが返す指示は「まだ負っている作業」としてしか表現されないので、仮にエンジンが壊れても、認可された作業を続けることしかできず、セッションを乗っ取ることはできません。
 
@@ -137,7 +147,7 @@ flowchart TD
 
 `report` 自身は遷移ロジックを持ちません。`aidlc-state.ts` の遷移サブコマンドへのディスパッチャに徹し、「ゲート状態 → 終端かどうか」の順で、どのサブコマンドに委ねるかを選びます。
 
-そして `report` は**唯一の入口でもあります**。ライフサイクルを動かす11のサブコマンドは、エンジン本体から呼ばれたのでなければ拒否されます。呼び出し元の検証はエンジンのプロセス ID に紐づくので、印を真似ても通りません（CI などの自動化向けに、環境変数で外す逃げ道だけが用意されています）。コンダクターは `--result` に `awaiting-approval`／`approved`／`rejected`／`revised`／`completed`／`skipped` のいずれかを渡し、遷移そのものはエンジンが起こします。
+そしてライフサイクルを動かす11のサブコマンドは、**エンジン本体から呼ばれたのでなければ拒否されます**（結果の報告は `report`、一時停止は `park` が入口です）。呼び出し元の検証はエンジンのプロセス ID に紐づくので、印を真似ても通りません（CI などの自動化向けに、環境変数で外す逃げ道だけが用意されています）。コンダクターは `--result` に `awaiting-approval`／`approved`／`rejected`／`revised`／`completed`／`skipped` のいずれかを渡し、遷移そのものはエンジンが起こします。実装はこれらの別名と、再開用の値も受理します。
 
 | 報告したステージの状態 | 委ねる先 | 何が起きるか |
 |---|---|---|
@@ -149,7 +159,7 @@ flowchart TD
 
 `approve` は遷移の全体を所有します。承認は監査イベントを出してから前進まで一手でまとめて担うので、承認のあとに `advance` を別途呼んではいけません。もし承認の前にゲート開始の記録が漏れていても、`report` が欠けたゲートを補ってから承認します。監査ログの発行はツールが所有し、状態遷移サブコマンドが正しい監査イベントを内部で発行します。コンダクターが手で監査行を書くことはありません。承認ゲートの人側の手順（差し戻しの往復や「現状で承認」）は別記事「[承認ゲート](https://qiita.com/takeshishimada/items/cd6827700443c9987fd7)」で、監査イベントの体系は別記事「[状態と監査](https://qiita.com/takeshishimada/items/72234648bb4400cedf53)」で扱います。
 
-> **`park` — エンジンの第3のサブコマンド。** `next`（読む）/ `report`（書く）に加わったのが `park` です。長尺（enterprise スコープなど）のワークフローを、ステージを空承認で消化して `done` に到達させずに、現在のステージ境界で一時停止します。`aidlc-orchestrate.ts park` は `aidlc-state.ts park` に委ねて一時停止のマーカーを置き（変異はツール側＝エンジンは読み取り専用を保つ）、終端の `parked` 指示を出します。以降の素の `next` は `parked` を返し、Stop フックがそれを許可してターンを綺麗に終えます。`/aidlc --resume` で再開します。なお自律モードの構築では `park` は拒否されます（無人ループは止めない）。あわせて、宣言した成果物がディスクに無いステージを完了にできないアーティファクト・ガードもあります（空承認の防止。詳細は別記事「[承認ゲート](https://qiita.com/takeshishimada/items/cd6827700443c9987fd7)」）。
+> **`park` — 一時停止のサブコマンド。** エンジンのサブコマンドは `next`（読む）/ `report`（書く）/ `continue`（ルール配送の続きを受け取る）/ `park`（止める）の4つです。`park` は長尺（enterprise スコープなど）のワークフローを、ステージを空承認で消化して `done` に到達させずに、現在のステージ境界で一時停止します。`aidlc-orchestrate.ts park` は `aidlc-state.ts park` に委ねて一時停止のマーカーを置き（変異はツール側＝エンジンは読み取り専用を保つ）、終端の `parked` 指示を出します。以降の素の `next` は `parked` を返し、Stop フックがそれを許可してターンを綺麗に終えます。`/aidlc --resume` で再開します。なお自律モードの構築では `park` は拒否されます（無人ループは止めない）。あわせて、宣言した成果物がディスクに無いステージを完了にできないアーティファクト・ガードもあります（空承認の防止。詳細は別記事「[承認ゲート](https://qiita.com/takeshishimada/items/cd6827700443c9987fd7)」）。
 
 ## 次のステージの決まり方
 
@@ -189,13 +199,12 @@ flowchart TD
 
 | ファイル | 内容 |
 | --- | --- |
-| [`tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-directive.ts) | 指示の凍結契約。9種の kind の判別共用体・各フィールド・ランタイム検証。「engine↔conductor の凍結インターフェース」「状態なし・I/O なしの純粋な契約」、`GATE_UNRESOLVED` 番兵の定義 |
-| [`tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-orchestrate.ts) | エンジン本体。`next`（読み取り専用の問い合わせ）・`report`（遷移のコミット）・`park`。「足すのは決定ルールとパス解決の2つ」、`present-gate`/`dispatch-subagent` を発行しないハンドラ、skeleton round-trip、`report` のゲート→終端ディスパッチ |
-| [`tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-graph.ts) | ステージグラフのライブラリ。「グラフは構造的真実＝DAG」「スコープはサブ DAG（EXECUTE スライス＋`requires_stage` エッジ）」「直列ランタイムは番号順に線形化」 |
-| [`tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-state.ts) | 状態の読み書きと遷移サブコマンド（`advance`/`approve`/`reject`/`complete-workflow`/`park` 等）。`report` が委ねる先。監査発行はこれらが内部で所有 |
-| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/conductor.md) | コンダクターの実行品質の人格。エンジンが最初の `run-stage` 指示に埋め込んで届ける |
-| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol.md) | 承認ゲート・完了メッセージと `report` フロー・状態追跡（監査はツール所有・追記専用） |
-| [`CHANGELOG.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/CHANGELOG.md) | 型付き指示契約・`report`・conductor.md 人格の埋め込み（受け渡し）・skeleton round-trip・`parked`／`park` とアーティファクト・ガードの導入 |
+| [`tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-directive.ts) | 指示の凍結契約。10種の kind の判別共用体（`load-steering` を含む）・各フィールド・ランタイム検証。「engine↔conductor の凍結インターフェース」「状態なし・I/O なしの純粋な契約」、`GATE_UNRESOLVED` 番兵の定義 |
+| [`tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-orchestrate.ts) | エンジン本体。`next`（読み取り専用の問い合わせ）・`continue`（ルール配送の継続）・`report`（遷移のコミット）・`park`。「足すのは決定ルールとパス解決の2つ」、`present-gate`/`dispatch-subagent` を発行しないハンドラ、skeleton round-trip、`report` のゲート→終端ディスパッチ |
+| [`tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-graph.ts) | ステージグラフのライブラリ。「グラフは構造的真実＝DAG」「スコープはサブ DAG（EXECUTE スライス＋`requires_stage` エッジ）」「直列ランタイムは番号順に線形化」 |
+| [`tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-state.ts) | 状態の読み書きと遷移サブコマンド（`advance`/`approve`/`reject`/`complete-workflow`/`park` 等）。`report` が委ねる先。監査発行はこれらが内部で所有 |
+| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/conductor.md) | コンダクターの実行品質の人格。エンジンが最初の `run-stage` 指示に埋め込んで届ける |
+| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | 承認ゲート・完了メッセージと `report` フロー・状態追跡（監査はツール所有・追記専用） |
 
 ---
 

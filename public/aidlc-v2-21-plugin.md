@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -35,7 +35,7 @@ AI-DLC v2 の工程は32ステージ、スコープは9種。連載ではそう�
 
 ## 足せるもの
 
-プラグインは `plugins/<名前>/` に置きます。宣言ファイルが、そのプラグインが何を持ち込むかを列挙します。
+プラグインは `plugins/<名前>/` に置きます。宣言ファイルには名前や版が入りますが、何を持ち込むかは**ディレクトリの構成から発見されます**。`stages/`・`scopes/`・`agents/` など、決められた名前の置き場を見る形です。宣言の列挙を読む仕組みはまだ入っていません。
 
 | 持ち込むもの | 置き場所 | 内容 |
 | --- | --- | --- |
@@ -51,9 +51,9 @@ AI-DLC v2 の工程は32ステージ、スコープは9種。連載ではそう�
 
 ## 新しいステージ
 
-プラグインが持ち込むステージは、core のステージと同じ形をしています。フロントマターに番号・フェーズ・主担当・モードを備え、`plugin:` フィールドで**誰の持ち物か**を示す点だけが違います。
+プラグインが持ち込むステージは、core のステージと同じ形をしています。フロントマターに番号・フェーズ・主担当・モードを備え、`plugin:` フィールドで**誰の持ち物か**を示す点が違います。番号と名前を自分で宣言できるのもプラグイン側だけで、core のステージはコンパイラが採番します。
 
-番号の付け方に工夫があります。参考実装は2本のステージを持ち、うち構築フェーズのものは `3.85` という番号で、構築フェーズの既存ステージ（3.1〜3.7）の後ろに割り込みます。**小数を使うことで、core 側の採番を動かさずに差し込めます。**
+番号の付け方に工夫があります。参考実装は2本のステージを持ち、うち構築フェーズのものは `3.85` という番号を宣言します。構築フェーズの既存ステージ（3.1〜3.7）の後ろに割り込ませる狙いです。ただし**宣言した番号がコンパイル済みのグラフにそのまま渡る仕組みはまだ入っていません**。実際の採番はコンパイラが空き番号を採る形になります。
 
 実行条件も core のステージと同じように書けます。参考実装の統合テストのステージは「プラグインが有効で、かつビルドが複数の作業単位にまたがるときに1回だけ」という条件を持ちます。これは全ステージ共通の散文フィールドで、プラグイン固有のものではありません。
 
@@ -61,7 +61,7 @@ AI-DLC v2 の工程は32ステージ、スコープは9種。連載ではそう�
 
 ## 既存ステージへの追加
 
-プラグインは、**core のステージファイルを書き換えずに**、その中身に手順や成果物を足せます。
+プラグインは、既存ステージの中身に手順や成果物を足せます。合成はインストール先のステージファイルへ直接書き込む形で行われ、書き込んだ内容は再コンパイルをまたいで残ります。
 
 追加を書いたファイルには、どのステージが対象かと、何を足すかが宣言されています。参考実装が NFR 設計のステージに足しているものを例に取ると、こうなります。
 
@@ -72,7 +72,7 @@ AI-DLC v2 の工程は32ステージ、スコープは9種。連載ではそう�
 
 差し込む位置は名前で指定します。参考実装は「手順の最後」を指定していて、複数のプラグインが同じ場所を狙ったときのために順番を表す数値も添えます。
 
-つまり core のステージ定義は**そのまま**で、合成された結果が実際に使われます。
+つまり上流の `core/` には手を加えず、インストール先で合成した結果が使われます。プラグインを外すときは、合成で足した分を取り除く処理が別に用意されています。
 
 ## 合成の実体
 
@@ -120,26 +120,25 @@ Claude と Codex にはプラグインの仕組みが元々あるので、その
 
 ## まとめ
 
-プラグイン機構が変えたのは、**「32ステージ」「スコープ9種」が固定量ではなくなった**ことです。連載の数値はいずれも出荷時点のもので、インストール先で増えることがあります。
+プラグイン機構があるため、**「32ステージ」「スコープ9種」は固定量ではありません**。連載の数値はいずれも出荷時点のもので、インストール先で増えることがあります。
 
 設計として目を引くのは2点あります。
 
-1つは、**既存ステージを書き換えずに足す**という選び方です。core のファイルはそのままで、宣言された追加を合成時に混ぜ込みます。だから core の更新とプラグインの更新が衝突しません。
+1つは、**既存ステージへ宣言で足す**という選び方です。プラグイン側は足したい分だけを書き、合成がそれをインストール先のステージへ混ぜ込みます。上流の `core/` を書き換えないので、core の更新とプラグインの更新が衝突しません。
 
-もう1つは、**core 自身を暗黙のプラグインとして扱った**ことです。特別扱いをやめて同じ仕組みに乗せたので、「core だけ」も「プラグインだけ」も同じ機構で表現できます。拡張の仕組みを後付けするとき、本体を特別扱いしたまま外側に足すほうが実装は楽ですが、そうしなかった形です。
+もう1つは、**core 自身を暗黙のプラグインとして扱った**ことです。特別扱いせず同じ仕組みに乗せているので、「core だけ」も「プラグインだけ」も同じ機構で表現できます。拡張の仕組みを後付けするとき、本体を特別扱いしたまま外側に足すほうが実装は楽ですが、そうしなかった形です。
 
 ## 参照元
 
 | ファイル | 内容 |
 | --- | --- |
-| [`plugins/test-pro/.aidlc-plugin/plugin.json`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/plugins/test-pro/.aidlc-plugin/plugin.json) | プラグインの宣言。持ち込める7種類（stages／overlays／agents／scopes／knowledge／sensors／tools）と依存の宣言 |
-| [`plugins/test-pro/contributions/construction/nfr-design.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/plugins/test-pro/contributions/construction/nfr-design.md) | 既存ステージへの追加の実例。対象ステージ・足す成果物・必須見出し・差し込む断片と位置 |
-| [`plugins/test-pro/stages/construction/test-pro-integration.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/plugins/test-pro/stages/construction/test-pro-integration.md) | プラグインのステージの実例。小数の番号（3.85）で既存の採番を動かさずに差し込む、`plugin:` による所有権、実行条件 |
-| [`plugins/test-pro/stages/operation/test-pro-full-suite.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/plugins/test-pro/stages/operation/test-pro-full-suite.md) | 機械が読める起動条件（`when:`）を宣言している唯一の実例。形は検証されるが評価は未実装 |
-| [`core/tools/aidlc-stage-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-stage-schema.ts) | `plugin`／`number`／`name`／`when`／`required_sections` を省略可能フィールドとして受けること。`when` は形のみ検証しコンパイル時の評価は別扱い。core のステージはこれらを持たないのでコンパイル結果が変わらない |
-| [`scripts/plugin-hooks-template/compose.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/scripts/plugin-hooks-template/compose.ts) | セッション開始時に走る合成フック。上書きしないステージのコピー、作る成果物・読む成果物・センサー・必須見出しの足し合わせ、内容ハッシュによる冪等な断片の差し込みと順序決定、グラフの再コンパイル、取りこぼしの記録 |
-| [`scripts/package.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/scripts/package.ts) | ハーネスごとの投影と、生成し直してのずれ検出 |
-| [`CHANGELOG.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/CHANGELOG.md) | 2.3.0：プラグイン機構。2.3.5：インストール時の選択、core を暗黙の `aidlc` プラグインとして扱うこと、所有権フィールドの改名。先送りにした surfaces の一覧 |
+| [`plugins/test-pro/.aidlc-plugin/plugin.json`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/plugins/test-pro/.aidlc-plugin/plugin.json) | プラグインの宣言。持ち込める7種類（stages／overlays／agents／scopes／knowledge／sensors／tools）と依存の宣言 |
+| [`plugins/test-pro/contributions/construction/nfr-design.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/plugins/test-pro/contributions/construction/nfr-design.md) | 既存ステージへの追加の実例。対象ステージ・足す成果物・必須見出し・差し込む断片と位置 |
+| [`plugins/test-pro/stages/construction/test-pro-integration.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/plugins/test-pro/stages/construction/test-pro-integration.md) | プラグインのステージの実例。小数の番号（3.85）の宣言（ただしコンパイル済みノードへは渡らない）、`plugin:` による所有権、実行条件 |
+| [`plugins/test-pro/stages/operation/test-pro-full-suite.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/plugins/test-pro/stages/operation/test-pro-full-suite.md) | 機械が読める起動条件（`when:`）を宣言している唯一の実例。形は検証されるが評価は未実装 |
+| [`core/tools/aidlc-stage-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-stage-schema.ts) | `plugin`／`number`／`name`／`when`／`required_sections` を省略可能フィールドとして受けること。`when` は形のみ検証しコンパイル時の評価は別扱い。core のステージはこれらを持たないのでコンパイル結果が変わらない |
+| [`scripts/plugin-hooks-template/compose.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/scripts/plugin-hooks-template/compose.ts) | セッション開始時に走る合成フック。上書きしないステージのコピー、作る成果物・読む成果物・センサー・必須見出しの足し合わせ、内容ハッシュによる冪等な断片の差し込みと順序決定、グラフの再コンパイル、取りこぼしの記録 |
+| [`scripts/package.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/scripts/package.ts) | ハーネスごとの投影と、生成し直してのずれ検出 |
 
 ---
 

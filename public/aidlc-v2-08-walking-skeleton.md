@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -33,7 +33,7 @@ AI-DLC v2 では、これは設計上の推奨にとどまらず、ワークフ�
 
 新しいシステムを層ごとに作り込んでから最後にまとめて結合すると、各層のつなぎ目の不具合が終盤まで表に出ません。ウォーキングスケルトンはこの順序を逆にします。機能は最小限でも、全層をつないだ実装を最初に1本通し、全結合点（integration point）が正しくつながることを先に確かめます。土台が端から端まで動くことを確認してから、残りの機能を後続の Bolt で足していきます。考え方の出典は Alistair Cockburn の『Crystal Clear』です。
 
-ここでいう Bolt（構築の実行単位）とは、Construction の設計からコード生成までのステージ（3.1〜3.5）を作業単位（Unit of Work）ごとに1回通す、デプロイ可能なまとまりです。ビルド・テスト（3.6）と CI パイプライン（3.7）は Bolt ごとではなく、全 Bolt が終わったあとに1回だけ走ります。最初の Bolt がこのウォーキングスケルトンにあたり、ここだけは自律モードの設定に関わらず必ず人の承認を通り、承認の直後に「ここから先をどう走らせるか」を人が選びます。
+ここでいう Bolt（構築の実行単位）とは、Construction の設計からコード生成までのステージ（3.1〜3.5）を、1つの作業単位（Unit of Work）または依存で連結した小群について1回通す、デプロイ可能なまとまりです。ビルド・テスト（3.6）と CI パイプライン（3.7）は Bolt ごとではなく、全 Bolt が終わったあとに1回だけ走ります。最初の Bolt がこのウォーキングスケルトンにあたり、ここだけは自律モードの設定に関わらず必ず人の承認を通り、承認の直後に「ここから先をどう走らせるか」を人が選びます。
 
 ## 全体像
 
@@ -115,7 +115,7 @@ stance の判定は、決定論的に動くエンジンが唯一、自分では�
 
 方針が競合したときは practices（チームが定めた作法。後述）が勝ちます。`bolt-plan.md` がある Bolt にスケルトンマーカーを付けていても、チーム practices が現在のスコープで skeleton-off と言っているなら、コンダクターはマーカーではなく practices から stance を判定し、`PRACTICES_OVERRIDE` を監査イベントに記録します。practices はチームの恒常的な声であり、bolt-plan のマーカーは一回のワークフローの解釈にすぎないからです。
 
-なお上表はスコープ名を列挙したものではなく、各スコープのファイルが持つ `skeleton:` フィールド（`on` / `off`）の実測です。かつてはスコープ名の集合がコードに直接書かれていましたが、いまはスコープ定義の側が持つデータで決まります。スコープを増やしても、そのファイルに `skeleton:` を書けばこの表に加わります。
+なお上表はスコープ名を列挙したものではなく、各スコープのファイルが持つ `skeleton:` フィールド（`on` / `off`）の実測です。スケルトンを敷くかどうかは、コード側がスコープ名を列挙して決めるのではなく、スコープ定義の側が持つデータで決まります。スコープを増やしても、そのファイルに `skeleton:` を書けばこの表に加わります。
 
 ## 方針（stance）の出どころ
 
@@ -127,12 +127,12 @@ stance の判定は、決定論的に動くエンジンが唯一、自分では�
 
 | ファイル | 内容 |
 | --- | --- |
-| [`aidlc-common/stages/inception/delivery-planning.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/inception/delivery-planning.md) | デリバリー計画。ウォーキングスケルトンの定義、経済的な Bolt 順序、`bolt-plan.md` のマーカーと確信仮説 |
-| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol.md) | ステージプロトコル。ウォーキングスケルトン・ゲート、自律モードの選択、halt-and-ask |
-| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/conductor.md) | コンダクターの行動規範。`gate: "unresolved"` の分類手順と `PRACTICES_OVERRIDE` |
-| [`aidlc-common/stages/inception/practices-discovery.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/inception/practices-discovery.md) | 作法の発見。`## Walking Skeleton` stance の収集と承認ゲート |
-| [`memory/org.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/memory/org.md) | 組織レベルの既定値。スコープ別の stance |
-| [`knowledge/aidlc-delivery-agent/workflow-planning-guide.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/knowledge/aidlc-delivery-agent/workflow-planning-guide.md) | デリバリーエージェントの計画ガイド。walking-skeleton-first ヒューリスティック（Cockburn） |
+| [`aidlc-common/stages/inception/delivery-planning.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/stages/inception/delivery-planning.md) | デリバリー計画。ウォーキングスケルトンの定義、経済的な Bolt 順序、`bolt-plan.md` のマーカーと確信仮説 |
+| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | ステージプロトコル。ウォーキングスケルトン・ゲート、自律モードの選択、halt-and-ask |
+| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/conductor.md) | コンダクターの行動規範。`gate: "unresolved"` の分類手順と `PRACTICES_OVERRIDE` |
+| [`aidlc-common/stages/inception/practices-discovery.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/stages/inception/practices-discovery.md) | 作法の発見。`## Walking Skeleton` stance の収集と承認ゲート |
+| [`memory/org.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/memory/org.md) | 組織レベルの既定値。スコープ別の stance |
+| [`knowledge/aidlc-delivery-agent/workflow-planning-guide.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/knowledge/aidlc-delivery-agent/workflow-planning-guide.md) | デリバリーエージェントの計画ガイド。walking-skeleton-first ヒューリスティック（Cockburn） |
 
 ---
 

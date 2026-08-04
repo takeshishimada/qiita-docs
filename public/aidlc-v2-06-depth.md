@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -51,7 +51,7 @@ AI-DLC v2 には、ワークフローの振る舞いを変える独立した軸�
 | 標準 | 必要な項目をひと通り揃え、根拠も簡潔に明記 | ほとんどの機能開発・MVP |
 | 網羅的 | 要件の洗い出し、非機能要件、コンプライアンス、監査文書まで | 規制対応・エンタープライズ |
 
-変わるのは、成果物の分量と、コンダクターが各ステージで出す質問の数です。最小限なら1ステージあたり2〜4問で手早く進み、標準は5〜8問、網羅的は8問以上かけて隅々まで詰めます。これらは目安であって上限ではなく、説明が曖昧なら最小限でも質問を増やしますし、要件が明確なら網羅的でも減らします。なお、回答どうしの矛盾の検出と解消だけは、どの深さでも必ず行います。
+変わるのは、成果物の分量と、コンダクターが各ステージで出す質問の数です。最小限なら1ステージあたり2〜4問で手早く進み、標準は5〜8問、網羅的は8〜12問かけて隅々まで詰めます。これらは目安であって上限ではなく、説明が曖昧なら最小限でも質問を増やしますし、要件が明確なら網羅的でも減らします。なお、回答どうしの矛盾の検出と解消だけは、どの深さでも必ず行います。
 
 ## テスト戦略との分離
 
@@ -65,11 +65,12 @@ AI-DLC v2 には、ワークフローの振る舞いを変える独立した軸�
 
 深さの既定値はスコープが決めます。どのスコープがどの深さを既定にするかは別記事「[スコープ](https://qiita.com/takeshishimada/items/c232fb2e994e7b567a5c)」で扱います。決まった既定は、ワークフローの初期化で状態ファイル（`aidlc-state.md`）に書き込まれて確定します。
 
-そのうえで、人は後から深さを変えられます。変更できる場面は3つです。
+そのうえで、人は後から深さを変えられます。変更できる場面は4つです。
 
 | タイミング | やり方 |
 | --- | --- |
 | 起動時 | `--depth` フラグで指定（例：`--scope bugfix --depth comprehensive`） |
+| 実行中 | `/aidlc --depth <値>` で走っているワークフローの深さを変える。`DEPTH_CHANGED` が残るのはこの経路 |
 | スコープ確認時 | 提示されたスコープを確認する場面で深さを変更 |
 | 承認ゲート | やり直しのフィードバックとして別の深さを要求 |
 
@@ -91,10 +92,10 @@ AI-DLC v2 には、ワークフローの振る舞いを変える独立した軸�
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-utility.ts) | 深さ・テスト戦略の enum（`minimal`/`standard`/`comprehensive`）と解決ロジック（テスト戦略の既定は深さに追従） |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol.md) | §3 深さ別の質問数の目安と「目安であって上限ではない」規定、矛盾検出は全深さで必須。§8 スコープごとの深さの既定、深さ別の成果物スケール、承認ゲートを含む変更の3タイミング、テスト戦略 |
-| [`core/scopes/`](https://github.com/awslabs/aidlc-workflows/tree/9f91454/core/scopes)（9ファイル） | 各スコープの `depth` 既定。`aidlc-workshop.md` のみ `testStrategy: Minimal` を分離 |
-| [`core/tools/aidlc-audit.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-audit.ts) | 監査イベント `DEPTH_CHANGED`／`TEST_STRATEGY_CHANGED` の定義 |
+| [`core/tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-utility.ts) | 深さ・テスト戦略の enum（`minimal`/`standard`/`comprehensive`）と解決ロジック（テスト戦略の既定は深さに追従） |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | §3 深さ別の質問数の目安と「目安であって上限ではない」規定、矛盾検出は全深さで必須。§8 スコープごとの深さの既定、深さ別の成果物スケール、承認ゲートを含む変更の3タイミング、テスト戦略 |
+| [`core/scopes/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/scopes)（9ファイル） | 各スコープの `depth` 既定。`aidlc-workshop.md` のみ `testStrategy: Minimal` を分離 |
+| [`core/tools/aidlc-audit.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-audit.ts) | 監査イベント `DEPTH_CHANGED`／`TEST_STRATEGY_CHANGED` の定義 |
 
 ---
 

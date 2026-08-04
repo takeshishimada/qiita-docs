@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -105,12 +105,14 @@ Intent → Requirement → Story → Architecture Component → Code Module → 
 
 では合否はどこで判定されるのか。それはコンダクター（LLM）がプロトコル規約に沿って行う知識作業です。`stage-protocol-governance.md` §13 が境界ごとに何を確かめるかを定め、そこから読み込まれる `verification.md` が「成果物を読み、鎖を組み立て、gap・orphan・矛盾を洗い出し、レポートを書き、人に提示する」という中身を定義しています。検証が失敗したときは、承認ゲートに合流します。
 
-止める権限で機構を切り分けると、AI-DLC v2 には2つしかありません。
+検証の結果が進行にどう効くかで切り分けると、AI-DLC v2 には2つしかありません。
 
-| 機構 | 止める権限 | 実体 |
+| 機構 | 進行への効き方 | 実体 |
 |----|---------|------|
 | センサー | 止めない（助言のみ） | 全センサーが `advisory`。`upstream-coverage` などステージ単位で走り、欠落を報告するが進行は止めない |
 | 承認ゲート | 人が止める | 人が成果物を確認して承認する。フェーズ境界検証の失敗もここに合流する |
+
+これとは別に、中身を判定せず**証拠の有無だけを見て完了を拒む**前提条件がいくつもあります（成果物の実在、人の操作、協働者の記録、レビューの記録、作業単位の充足）。詳しくは別記事「[限界と注意点](https://qiita.com/takeshishimada/items/7b7582e2dfac5d942eda)」で扱います。
 
 フェーズ境界の `PHASE_VERIFIED` はこのどちらでもなく、境界を越えた事実を記録する監査マーカーです。検証の判定は規約に沿ってコンダクターが担い、失敗時は承認ゲートが受け止めます。承認ゲートの差し戻しや「現状で承認」の仕組みは、別記事「[承認ゲート](https://qiita.com/takeshishimada/items/cd6827700443c9987fd7)」で扱います。この検証が現実にどこまで効くか（LLM 規約に委ねた判定の限界）は、別記事「[限界と注意点](https://qiita.com/takeshishimada/items/7b7582e2dfac5d942eda)」で扱います。
 
@@ -141,13 +143,13 @@ flowchart TD
 
 | ファイル | 内容 |
 |---------|------|
-| [`core/aidlc-common/protocols/stage-protocol-governance.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol-governance.md) | §13 フェーズ境界検証の規約。3境界・検証手順・失敗時の合流を定義 |
-| [`core/knowledge/aidlc-shared/verification.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/knowledge/aidlc-shared/verification.md) | 検証方法論。トレーサビリティ鎖・状態指標・出力ファイルの定義 |
-| [`core/tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-state.ts) | `PHASE_VERIFIED` 監査イベントの発行（無条件・境界名のみのペイロード） |
-| [`core/tools/aidlc-audit.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-audit.ts) | `PHASE_VERIFIED` を含む監査イベント定義 |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol.md) | 承認ゲート。検証失敗時の合流先 |
-| [`core/sensors/aidlc-upstream-coverage.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/sensors/aidlc-upstream-coverage.md) | ステージ単位の助言センサー。`consumes:` 参照チェック（`default_severity: advisory`） |
-| [`core/tools/aidlc-sensor.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-sensor.ts) | センサー実装。全センサーの結果は advisory で進行を止めない |
+| [`core/aidlc-common/protocols/stage-protocol-governance.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol-governance.md) | §13 フェーズ境界検証の規約。3境界・検証手順・失敗時の合流を定義 |
+| [`core/knowledge/aidlc-shared/verification.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/knowledge/aidlc-shared/verification.md) | 検証方法論。トレーサビリティ鎖・状態指標・出力ファイルの定義 |
+| [`core/tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-state.ts) | `PHASE_VERIFIED` 監査イベントの発行（無条件・境界名のみのペイロード） |
+| [`core/tools/aidlc-audit.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-audit.ts) | `PHASE_VERIFIED` を含む監査イベント定義 |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | 承認ゲート。検証失敗時の合流先 |
+| [`core/sensors/aidlc-upstream-coverage.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/sensors/aidlc-upstream-coverage.md) | ステージ単位の助言センサー。`consumes:` 参照チェック（`default_severity: advisory`） |
+| [`core/tools/aidlc-sensor.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-sensor.ts) | センサー実装。全センサーの結果は advisory で進行を止めない |
 
 ---
 

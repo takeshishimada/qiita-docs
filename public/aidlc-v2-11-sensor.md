@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -33,7 +33,7 @@ agreed_posting_campaign_term: false
 
 出荷時のセンサーは5本です。コードの書式（linter）、型（type-check）、文書の必須項目（required-sections）、上流成果物の参照（upstream-coverage）、主張の出典（claim-sources）で、いずれも「合っているか／いないか」をツールで機械的に判定します。
 
-その判定は**助言にとどまります**。引っかかっても作業は止まらず、結果は監査ログに残るだけ。承認のタイミングで人が任意に参考にします。ワークフローを止められるのは承認ゲートだけで、センサーはそこに判断材料を一つ足すにすぎません。承認ゲートそのものは別記事「[承認ゲート](https://qiita.com/takeshishimada/items/cd6827700443c9987fd7)」で扱います。
+その判定は**助言にとどまります**。引っかかっても作業は止まらず、結果は監査ログに残るだけ。承認のタイミングで人が任意に参考にします。成果物の中身を見て止められるのは承認ゲートだけで、センサーはそこに判断材料を一つ足すにすぎません。承認ゲートそのものは別記事「[承認ゲート](https://qiita.com/takeshishimada/items/cd6827700443c9987fd7)」で扱います。
 
 出荷時の5本がすべてではありません。学習の中でチームの気づきがセンサー化されることもあります。ただしその作られ方は別記事「[学習ループ](https://qiita.com/takeshishimada/items/dd7f3d034ee2c137cff5)」で扱います。本記事は、すでにあるセンサーが**どう動くか**に集中します。
 
@@ -53,10 +53,10 @@ agreed_posting_campaign_term: false
 
 5本は3系統に分かれます。**code-quality**（linter / type-check）はコードファイルを、**document-shape**（required-sections / upstream-coverage）と**document-provenance**（claim-sources）は記録ツリー（成果物を置く aidlc-docs/intents の文書ツリー）の markdown を対象にします。
 
-`matches:` の粒度は拡張子で分かれます。`.ts` は linter と type-check の両方、`.tsx` は type-check のみ、`.js` は linter のみが反応します。文書系3本は記録ツリーへの書き込みすべてに反応します。`matches:` のグロブは `**/{aidlc-docs,intents}/**` で、intent 別の記録ディレクトリ（`intents/` セグメント）も旧来のフラット配置も拾います。
+`matches:` の粒度は拡張子で分かれます。`.ts` は linter と type-check の両方、`.tsx` は type-check のみ、`.js` は linter のみが反応します。文書系のうち required-sections と upstream-coverage は28ステージに効き、claim-sources は意図キャプチャの1ステージにだけ効きます。`matches:` のグロブは `**/{aidlc-docs,intents}/**` で、intent 別の記録ディレクトリ（`intents/` セグメント）もフラットな配置も拾います。
 
 - **linter** は警告では不合格にしません。実際の設定は `no-unused-vars: warn` のような警告を含むのが普通で、警告を不合格にすると保存ごとに `SENSOR_FAILED` が溢れるためです（`pass = errorCount === 0`）。
-- **upstream-coverage** はステージのフロントマターの `consumes:` リストから導出され、ステージごとの設定を要しません。宣言した上流成果物が出力側から参照されていないときに指摘します。照合は**実際に使われている引用の形**に合わせてあり、素の名前がその場に出ていなくても、由来を書く欄に生産者ディレクトリのパスで示されていれば参照とみなします。複数の成果物を作るステージが、引用を兄弟の成果物に分けて書いている場合も同様です。かつては全ファイルに素の名前を要求していたため、構築フェーズを1回通すだけで数百件の偽の失敗が積み上がっていました。本当に参照が欠けていれば、いまも不合格になります。ただし検査の対象は、**ディスク上に実在する成果物だけ**です。スコープが上流の生産者ステージをスキップしていれば、その成果物は作られません。作られていないものへの参照を本文に求めれば、そのスコープでそのステージを走らせるたびに `SENSOR_FAILED` が必ず出ます。実在するものに絞ることで、この偽陽性を消しています。成果物の不在が設計として正しい場合の扱いは別記事「[成果物の流れ](https://qiita.com/takeshishimada/items/46feb553f907f9eedd14)」で扱います。
+- **upstream-coverage** はステージのフロントマターの `consumes:` リストから導出され、ステージごとの設定を要しません。宣言した上流成果物が出力側から参照されていないときに指摘します。照合は**実際に使われている引用の形**に合わせてあり、素の名前がその場に出ていなくても、由来を書く欄に生産者ディレクトリのパスで示されていれば参照とみなします。複数の成果物を作るステージが、引用を兄弟の成果物に分けて書いている場合も同様です。書かれた全ファイルに素の名前を要求すると、実際には参照されているのに不合格が量産されるためです。本当に参照が欠けていれば不合格になります。ただし検査の対象は、**ディスク上に実在する成果物だけ**です。スコープが上流の生産者ステージをスキップしていれば、その成果物は作られません。作られていないものへの参照を本文に求めれば、そのスコープでそのステージを走らせるたびに `SENSOR_FAILED` が必ず出ます。実在するものに絞ることで、この偽陽性を消しています。成果物の不在が設計として正しい場合の扱いは別記事「[成果物の流れ](https://qiita.com/takeshishimada/items/46feb553f907f9eedd14)」で扱います。
 - **required-sections** は既定では「H2 が2本以上」だけを見ます。ただし `unit-of-work-dependency.md`（units-generation）に限り、ランタイムコンパイラが読む `units:` の DAG ブロックが**整形済みかつ非循環**であることも追加検査します。壊れた DAG ブロックがコンパイラに渡る前にゲートで止めるためです。
   - この既定の上に**テンプレート上書き層**があります。成果物 `X`（→ `X.md`）を書く前に、チームが置いた `aidlc/spaces/<space>/memory/templates/X.md` → フレームワーク既定テンプレ → 既定（H2≥2 のフロア）の順で解決し、テンプレートが当たればその `##` 見出し集合を期待値として `expected ⊆ output` で合否を出します（同じテンプレートが成果物生成側の骨格にもなるので、作る形と検査する形がズレません）。ただし **GA（正式版）ではフレームワーク既定テンプレを1つも出荷しない**ため、チームがテンプレートを書かない限り挙動は従来どおり（H2≥2）です。`*-questions` や `*-timestamp` はテンプレート対象外で、当たっても無視してフロアを保ちます。
 
@@ -82,9 +82,9 @@ flowchart TD
     DETAIL --> EXIT["フックは常に exit 0<br/>（止めない）"]
 ```
 
-**実行時に探索しない。** どのセンサーがどのステージに効くかは、ワークフロー開始時のコンパイルで解決され、各ステージのグラフノードに `sensors_applicable` として付与されます。フックはそれを読むだけで、ステージごとの解決計算を保存のたびに走らせることはしません。
+**実行時に探索しない。** どのセンサーがどのステージに効くかは、ビルド時のコンパイルで解決され、各ステージのグラフノードに `sensors_applicable` として付与されます。フックはそれを読むだけで、ステージごとの解決計算を保存のたびに走らせることはしません。
 
-**`matches` が唯一のフィルタ。** フックは保存ファイルのパスを各センサーの `matches` グロブと突き合わせ、合致したものだけを起動します。だから markdown を書いてもコードセンサーは動かず、`.ts` を書いても文書センサーは動きません。
+**ステージで絞ったうえで、`matches` が最後のフィルタ。** フックは保存ファイルのパスを各センサーの `matches` グロブと突き合わせ、合致したものだけを起動します。だから markdown を書いてもコードセンサーは動かず、`.ts` を書いても文書センサーは動きません。
 
 **監査に対で残る。** 起動ごとに `SENSOR_FIRED` を出し、8桁hexの Fire id で対にして終端行（`SENSOR_PASSED` / `SENSOR_FAILED` / `SENSOR_BUDGET_OVERRIDE`）を出します。1回の保存で複数センサーが同時に発火するため、対応づけは位置ではなく Fire id で行います。不合格のときだけ、`<record>/.aidlc-sensors/<stage-slug>/<id>-<fireId>.md`（`<record>` ＝ アクティブ intent の記録ディレクトリ）に違反の詳細（ファイル・行・ルール・メッセージ等）を書き出します。
 
@@ -106,6 +106,7 @@ flowchart TD
 | 出力JSONが壊れ／不正 | SENSOR_PASSED（Note: script-error: bad-output） | なし |
 | 起動失敗・想定外の異常終了 | SENSOR_PASSED（Note: script-error: …） | なし |
 | タイムアウト | SENSOR_BUDGET_OVERRIDE | なし |
+| 判定は FAILED だが詳細ファイルを書けない | SENSOR_PASSED（Note: script-error: detail-write-failed） | なし |
 
 **本当に `pass: false` を返したときだけが FAILED** です。それ以外の不確かな事態（eslint や tsc が入っていない、スクリプトが壊れた出力を返した、起動に失敗した）は**すべて PASSED 扱いになります**。タイムアウトすら失敗ではなく BUDGET_OVERRIDE という別カテゴリで記録されます。
 
@@ -130,21 +131,21 @@ AI-DLC v2 で止めない検証はもう一つあります。ステージの節�
 
 ## まとめ
 
-センサーは、保存のたびに静かに走る決定論的なチェックです。5本が書式・型・必須項目・上流参照・主張の出典を確かめ、結果を監査へ積みます。確かな違反だけを FAILED に残し、環境の不備では偽陽性を出さず、それでも進行は止めません。止める力は承認ゲートだけが持ち、センサーはそこに渡す判断材料を、人が見落とさないかたちで蓄えていきます。
+センサーは、保存のたびに静かに走る決定論的なチェックです。5本が書式・型・必須項目・上流参照・主張の出典を確かめ、結果を監査へ積みます。確かな違反だけを FAILED に残し、環境の不備では偽陽性を出さず、それでも進行は止めません。中身を見て止められるのは承認ゲートだけで、センサーはそこに渡す判断材料を、人が見落とさないかたちで蓄えていきます。
 
 ## 参照元
 
 | ファイル | 内容 |
 |---------|------|
-| [`core/sensors/aidlc-linter.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/sensors/aidlc-linter.md) | linter センサーの マニフェスト。`matches: **/*.{ts,js}`・category code-quality・既定 eslint・失敗時の詳細ファイル |
-| [`core/sensors/aidlc-type-check.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/sensors/aidlc-type-check.md) | type-check センサーの マニフェスト。`matches: **/*.{ts,tsx}`・既定 tsc |
-| [`core/sensors/aidlc-required-sections.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/sensors/aidlc-required-sections.md) | required-sections の マニフェスト。H2≥2 の汎用チェック、`unit-of-work-dependency.md` の `units:` DAG 追加検査、2.1.x のテンプレート上書き層（team → framework-default → フロア。GA は既定テンプレ空出荷）、`matches: **/{aidlc-docs,intents}/**` |
-| [`core/sensors/aidlc-upstream-coverage.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/sensors/aidlc-upstream-coverage.md) | upstream-coverage の マニフェスト。`consumes:` からの導出 |
-| [`core/sensors/aidlc-claim-sources.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/sensors/aidlc-claim-sources.md) | claim-sources の マニフェスト。category `document-provenance`（3つめの系統）、意図キャプチャの主張が確認済み出典レジスタと回答に解決するかを検査 |
-| [`core/hooks/aidlc-sensor-fire.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/hooks/aidlc-sensor-fire.ts) | 保存時フック（PostToolUse Write\|Edit）。`sensors_applicable` を読み、`matches` 合致分を起動。常に exit 0 |
-| [`core/tools/aidlc-sensor.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-sensor.ts) | センサーディスパッチャ。Fire id 採番・`SENSOR_FIRED`／終端行の発行・結果の判定表・詳細ファイル書き出し また upstream-coverage の検査対象を実在する消費物だけに絞る（生産者ディレクトリでの実在判定＝codekb・per-unit・通常の3経路、記録が解決できないときはフェイルオープン）。|
-| [`core/tools/aidlc-sensor-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-sensor-schema.ts) | マニフェスト スキーマ。`kind: deterministic`・`default_severity: advisory` 以外を不許可、`matches:` は任意 |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol.md) | §13 学習ゲート。センサー化の two-write install（マニフェスト 生成＋ステージ `sensors:` への id 追記）と `SENSOR_PROPOSED` |
+| [`core/sensors/aidlc-linter.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/sensors/aidlc-linter.md) | linter センサーの マニフェスト。`matches: **/*.{ts,js}`・category code-quality・既定 eslint・失敗時の詳細ファイル |
+| [`core/sensors/aidlc-type-check.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/sensors/aidlc-type-check.md) | type-check センサーの マニフェスト。`matches: **/*.{ts,tsx}`・既定 tsc |
+| [`core/sensors/aidlc-required-sections.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/sensors/aidlc-required-sections.md) | required-sections の マニフェスト。H2≥2 の汎用チェック、`unit-of-work-dependency.md` の `units:` DAG 追加検査、テンプレート上書き層（team → framework-default → フロア。GA は既定テンプレ空出荷）、`matches: **/{aidlc-docs,intents}/**` |
+| [`core/sensors/aidlc-upstream-coverage.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/sensors/aidlc-upstream-coverage.md) | upstream-coverage の マニフェスト。`consumes:` からの導出 |
+| [`core/sensors/aidlc-claim-sources.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/sensors/aidlc-claim-sources.md) | claim-sources の マニフェスト。category `document-provenance`（3つめの系統）、意図キャプチャの主張が確認済み出典レジスタと回答に解決するかを検査 |
+| [`core/hooks/aidlc-sensor-fire.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/hooks/aidlc-sensor-fire.ts) | 保存時フック（PostToolUse Write\|Edit）。`sensors_applicable` を読み、`matches` 合致分を起動。常に exit 0 |
+| [`core/tools/aidlc-sensor.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-sensor.ts) | センサーディスパッチャ。Fire id 採番・`SENSOR_FIRED`／終端行の発行・結果の判定表・詳細ファイル書き出し また upstream-coverage の検査対象を実在する消費物だけに絞る（生産者ディレクトリでの実在判定＝codekb・per-unit・通常の3経路、記録が解決できないときはフェイルオープン）。|
+| [`core/tools/aidlc-sensor-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-sensor-schema.ts) | マニフェスト スキーマ。`kind: deterministic`・`default_severity: advisory` 以外を不許可、`matches:` は任意 |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | §13 学習ゲート。センサー化の two-write install（マニフェスト 生成＋ステージ `sensors:` への id 追記）と `SENSOR_PROPOSED` |
 
 ---
 
