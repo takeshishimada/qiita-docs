@@ -19,15 +19,15 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
 ## 概要
 
-AI-DLC v2 の各ステージには、主担当（Lead）と補佐（Support）が割り当てられます。ではその2者は、ステージが走っているあいだ実際にどうやって協働するのか。従来この問いに答えはありませんでした。補佐は「コンダクターが自分の中で引き受ける観点」で、独立した参加者ではなかったからです。
+AI-DLC v2 の各ステージには主担当（Lead）が置かれ、補佐（Support）が付くステージもあります（32ステージのうち20）。では補佐が付くとき、その2者はステージが走っているあいだ実際にどうやって協働するのか。補佐を「コンダクターが自分の中で引き受ける観点」とだけ捉えると、この問いは立ちません。観点は独立した参加者ではないからです。
 
-いま、それを決めるフィールドがあります。ステージのフロントマターの `mode` で、**誰が誰と話すか**という協働のかたち（トポロジー）を指します。実際に走るのは4つ。全員の役を1人で引き受ける `inline`、下書きを囲んで検分する `subagent`、順に手を入れる `pipeline`、一斉に意見を出す `mob` です（スキーマはもう1つ `agent-team` を受け付けますが、将来のための予約でランタイムを持ちません）。
+それを決めるのが、ステージのフロントマターの `mode` です。**誰が誰と話すか**という協働のかたち（トポロジー）を指します。実際に走るのは4つ。全員の役を1人で引き受ける `inline`、下書きを囲んで検分する `subagent`、順に手を入れる `pipeline`、一斉に意見を出す `mob` です（スキーマはもう1つ `agent-team` を受け付けますが、将来のための予約でランタイムを持ちません）。
 
 本記事では、この4つが何を変えるのか、協働の記録がなぜファイルとして残るのか、そして意見が割れたとき誰が決めるのかを読み解きます。
 
@@ -54,7 +54,7 @@ AI-DLC v2 の各ステージには、主担当（Lead）と補佐（Support）�
 | `pipeline` | 鎖。順に手を入れ、最後の段が仕上げる | 1 |
 | `mob` | 一つの部屋。一斉に意見を出し、異議は記録される | 1 |
 
-**32ステージのうち28は `inline`** です。支配的なのは従来どおりの形で、残る4つが実際に別のエージェントを起動します。
+**32ステージのうち28は `inline`** です。支配的なのは、ステージ本体を1人で回す形です。残る4つは本体そのものを複数のエージェントで回します（`inline` でもレビュアーを宣言するステージでは、成果物ができたあとに別エージェントとしてレビュアーが起動します）。
 
 ### inline
 
@@ -62,7 +62,7 @@ AI-DLC v2 の各ステージには、主担当（Lead）と補佐（Support）�
 
 ### subagent
 
-ハブとスポークです。まず主担当を起動して下書きを作らせ、次に各補佐をその下書きに対して起動します。このとき**補佐どうしは互いを見ません**。ある補佐に渡す指示に、別の補佐の作業は含まれません。最後にもう一度主担当を起動して統合させます。
+ハブとスポークです。まず主担当を起動して下書きを作らせ、補佐が宣言されていれば各補佐をその下書きに対して起動します（補佐が付かないステージでは主担当の単発起動で終わります）。このとき**補佐どうしは互いを見ません**。ある補佐に渡す指示に、別の補佐の作業は含まれません。最後にもう一度主担当を起動して統合させます。
 
 作法の発見のステージがこの形です。パイプラインデプロイが下書きを書き、品質・デベロッパー・DevSecOps が互いに見えない状態で検分し、人との面談で判断を埋め、主担当が統合します。
 
@@ -70,7 +70,7 @@ AI-DLC v2 の各ステージには、主担当（Lead）と補佐（Support）�
 
 鎖です。主担当を先頭に、補佐が宣言された順に1体ずつ動き、**各段が上流の作業をすべて見ます**。段が成果物を直接書き換えてもよく、直列なので衝突しません。最後の段が成果物を完成させます。
 
-リバースエンジニアリングがこの形です。デベロッパーが走査し、アーキテクトが統合して書く2段の鎖で、以前からそういう構造だったものに名前が付きました。**順序そのものが意味を持つ**場合のかたちです。
+リバースエンジニアリングがこの形です。デベロッパーが走査し、アーキテクトが統合して書く2段の鎖です。**順序そのものが意味を持つ**場合のかたちにあたります。
 
 ### mob
 
@@ -100,7 +100,7 @@ AI-DLC v2 の各ステージには、主担当（Lead）と補佐（Support）�
 
 `mob` には、意見が割れたときの手順があります。ラウンド1で残った異議を、**種類で仕分けます**。
 
-**判断の問題**（どちらの立場も筋が通る。範囲・リスクの取り方・優先順位など）は、**ステージの途中で人に問います**。構造化された設問として提示し、人の裁定を受けてから統合を続けます。承認の場で事後に承認するのではなく、**人も部屋の参加者**として扱う、という考え方です。
+**判断の問題**（どちらの立場も筋が通る。範囲・リスクの取り方・優先順位など）は、**ステージの途中で人に問います**。構造化された設問として提示し、人の裁定を受けてから統合を続けます。設問は、提示の前にそのステージの質問ファイルへ空の回答欄つきで書き出す決まりです。承認の場で事後に承認するのではなく、**人も部屋の参加者**として扱う、という考え方です。
 
 **知識の問題**（詳しい者が決着させられる）はラウンド2に回します。異議を出したエージェントに、修正後の下書きと他の参加者の立場を渡して、取り下げるか維持するかを確認します。**ラウンドは最大2つ**です。
 
@@ -122,7 +122,7 @@ contribution ファイルには、もう一つの役割があります。**完�
 
 `mob` と、補佐を宣言した `subagent` のステージでは、宣言された補佐のファイルが欠けていたり、1行目の印を欠いていたりすると、**そのステージを完了にできません**。正当に走ったのにファイルを失った場合のための逃げ道として、環境変数で外せます。
 
-これは品質を判定しているわけではありません。中身の良し悪しは見ず、「起動されたはずの参加者の作業が残っているか」だけを見ます。宣言した成果物がディスクに無いと完了を拒む仕組みと同じ性格の、証拠を求める前提条件です。止める力は承認ゲートだけが持つ、という構図は変わりません。この線引きは別記事「[限界と注意点](https://qiita.com/takeshishimada/items/7b7582e2dfac5d942eda)」で扱います。
+これは品質を判定しているわけではありません。中身の良し悪しは見ず、「起動されたはずの参加者の作業が残っているか」だけを見ます。宣言した成果物がディスクに無いと完了を拒む仕組みと同じ性格の、証拠を求める前提条件です。中身を見て止められるのは承認ゲートだけ、という構図は変わりません。この線引きは別記事「[限界と注意点](https://qiita.com/takeshishimada/items/7b7582e2dfac5d942eda)」で扱います。
 
 ## 主担当だけが戻る往復
 
@@ -142,12 +142,12 @@ contribution ファイルには、もう一つの役割があります。**完�
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/protocols/stage-protocol.md) | §5 Multi-agent stages（ensemble topologies）。4トポロジーの定義、役割が不変であること、コンダクターがバスであること、contribution ファイルの構造、mob の異議の仕分け、並行できないハーネスでの約束、完了の証拠 |
-| [`core/tools/aidlc-stage-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-stage-schema.ts) | `mode` の許容値と、`pipeline`／`mob` が空でない `support_agents` を要求する検証。`agent-team` が予約である旨 |
-| [`core/aidlc-common/stages/inception/practices-discovery.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/inception/practices-discovery.md) | `subagent`（ハブとスポーク）の実例。主担当と3体の補佐 |
-| [`core/aidlc-common/stages/inception/reverse-engineering.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/inception/reverse-engineering.md) | `pipeline`（2段の鎖）の実例 |
-| [`core/aidlc-common/stages/inception/user-stories.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/aidlc-common/stages/inception/user-stories.md) | `mob` の実例。主担当と3体の補佐 |
-| [`CHANGELOG.md`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/CHANGELOG.md) | 2.5.0：三役アンサンブル。出荷トポロジーが 28 inline／2 subagent／1 pipeline／1 mob であること、`AIDLC_DISABLE_ENSEMBLE_EVIDENCE` |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | §5 Multi-agent stages（ensemble topologies）。4トポロジーの定義、役割が不変であること、コンダクターがバスであること、contribution ファイルの構造、mob の異議の仕分け、並行できないハーネスでの約束、完了の証拠 |
+| [`core/tools/aidlc-stage-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-stage-schema.ts) | `mode` の許容値と、`pipeline`／`mob` が空でない `support_agents` を要求する検証。`agent-team` が予約である旨 |
+| [`core/aidlc-common/stages/inception/practices-discovery.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/inception/practices-discovery.md) | `subagent`（ハブとスポーク）の実例。主担当と3体の補佐 |
+| [`core/aidlc-common/stages/inception/reverse-engineering.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/inception/reverse-engineering.md) | `pipeline`（2段の鎖）の実例 |
+| [`core/aidlc-common/stages/inception/user-stories.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/inception/user-stories.md) | `mob` の実例。主担当と3体の補佐 |
+| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-orchestrate.ts) | 協働者の記録が欠けていると完了を拒む検査と、その無効化スイッチ `AIDLC_DISABLE_ENSEMBLE_EVIDENCE` |
 
 ---
 

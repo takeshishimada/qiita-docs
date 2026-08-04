@@ -19,23 +19,23 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 7 月 27 日時点のコミット `9f91454`（AIDLC_VERSION 2.5.11、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
 ## 概要
 
-swarm は、Construction（構築）の自律モード下で複数の Bolt（構築の実行単位）を並列に走らせる仕組みです。互いに依存しないビルドユニットを隔離した git worktree へ分配し、それぞれが「テストが緑（合格）かつ未改竄」になったものだけを、直列に base へ統合し戻します。各ユニットの収束を権威として判定するのが、審判役のレフェリーです。
+swarm は、Construction（構築）の自律モード下で複数の Bolt（構築の実行単位）を並列に走らせる仕組みです。互いに依存しないユニットを隔離した git worktree へ分配し、「テストが緑（合格）かつ未改竄」になったものだけを、直列に base へ統合し戻します。各ユニットの収束を権威として判定するのが、審判役のレフェリーです。
 
-ここは自律モードまで踏み込んだ任意の深掘りです。並列に走らせ、しかも人がその場で見ていない、という状況は本来リスクを伴うものですが、AI-DLC v2 はこれを三者分担という設計で安全側に寄せています。コンダクター・ツール・人がそれぞれ性質の違う関心を持ち、合格したという自己申告を最後にもう一度検証してから統合します。この分担と検証の仕組みが、並列実行を成り立たせています。
+ここは自律モードまで踏み込んだ任意の深掘りです。並列に走らせ、しかも人がその場で見ていない、という状況は本来リスクを伴うものですが、AI-DLC v2 はこれを三者分担という設計で安全側に寄せています。コンダクター・ツール・人が、それぞれ性質の違う関心を持ちます。合格したという自己申告は、統合の直前にツールがもう一度検証します。この分担と検証の仕組みが、並列実行を成り立たせています。
 
 ## 並列実行とは
 
 ウォーキングスケルトン（最初の Bolt）が承認され、人が「残りの Bolt は自律で走らせてよい」と決めると、互いに依存しない Bolt をまとめて並列に進められるようになります。これを担うのが swarm です。
 
-エンジンが `invoke-swarm` 指示（directive）を発行するのは、自律モードが付与され、code-generation ステージにいて、コンパイル済みのユニット DAG（依存関係のグラフ）に実行可能な並列バッチが揃っているとき**だけ**です。自律モードが `gated`（承認ゲート経由＝自律では走らせない）や未設定のうちは、エンジンは通常どおり `run-stage` を発行し続け、何も並列化しません。最初の Bolt は設定に関わらず必ず承認ゲートを通るため、swarm の経路には乗りません。`invoke-swarm` が指示の一つであることや指示の定義そのものは、別記事「[進行の中核](https://qiita.com/takeshishimada/items/c3ac7c2223e5c7020d82)」で扱います。
+エンジンが `invoke-swarm` 指示（directive）を発行するのは、自律モードが付与され、構築フェーズで作業単位ごとに回るステージ（現状 code-generation のみ）にいて、コンパイル済みのユニット DAG（依存関係のグラフ）に実行可能な並列バッチが揃っているとき**だけ**です。自律モードが `gated`（承認ゲート経由＝自律では走らせない）や未設定のうちは、エンジンは通常どおり `run-stage` を発行し続け、何も並列化しません。最初の Bolt は設定に関わらず必ず承認ゲートを通るため、swarm の経路には乗りません。`invoke-swarm` が指示の一つであることや指示の定義そのものは、別記事「[進行の中核](https://qiita.com/takeshishimada/items/c3ac7c2223e5c7020d82)」で扱います。
 
-`invoke-swarm` の形は小さく、必須は分配するバッチを表す `units` だけです。残りのバッチ文脈はコンダクターがコンパイル済みのグラフから読みます。これに加わるのは2種類で、ステージがレビュアーを宣言していればその検証役を示すフィールドが、intent の記録リポがちょうど1つならその対象リポ（`repo`）が載ります。リポが2つ以上ある場合は、どれを狙うかをエンジンが決められないので付かず、コンダクターが渡します。
+`invoke-swarm` の形は小さく、必須は分配するバッチを表す `units` だけです。残りのバッチ文脈はコンダクターがコンパイル済みのグラフから読みます。これに加わるのは2種類です。ステージがレビュアーを宣言していれば、その検証役を示すフィールドが載ります。intent の記録リポがちょうど1つなら、その対象リポ（`repo`）が載ります。リポが2つ以上ある場合は、どれを狙うかをエンジンが決められないので付かず、コンダクターが渡します。
 
 ## 三者の分担
 
@@ -75,7 +75,7 @@ flowchart TD
 
 並列に走る複数のユニットが互いの作業を踏まないよう、`prepare` はユニット毎に隔離された git worktree を切ります（`.aidlc/worktrees/bolt-<slug>/`、ブランチ `bolt-<slug>`）。ここに状態・監査・グラフのフラグメントが fork され、ワーカーはそれぞれの worktree の中だけで作業します。完了したユニットは、この AI-DLC 側のデータが base のチェックアウトへ統合されます。ユニットが生んだコードや成果物は worktree に残ったままで、それを本流へ畳み込むのは Bolt のゲートを通った後の別工程です。
 
-改竄検知（anti-tamper）の基準値を、どこかに別途保存することはありません。保護対象ファイルの「正本」は、その worktree 自身の git fork（HEAD）における内容そのものです。ワーカーが保護ファイルを書き換えれば、それは作業ツリーの変更として現れ、`git diff --quiet HEAD` が変更ありを返します。`check` も `finalize` も、この元のバイト列を毎回その場で導出し直すので、状態を共有せずに必ず一致します。
+改竄検知（anti-tamper）の基準値を、どこかに別途保存することはありません。保護対象ファイルの「正本」は、その worktree 自身の git fork（HEAD）における内容そのものです。ワーカーが（HEAD に既にある）保護ファイルを書き換えれば、それは作業ツリーの変更として現れ、`git diff --quiet HEAD` が変更ありを返します。`check` も `finalize` も、この元のバイト列を毎回その場で導出し直すので、状態を共有せずに必ず一致します。
 
 検証対象のテストファイルに `../` を含み worktree の外を指すパスが渡された場合は、未改竄とは扱わず、設定エラーとして弾きます。これを許すと改竄検知が黙って無効化されてしまうからです。
 
@@ -114,17 +114,17 @@ halt-and-ask は、自律モードでも失敗したら必ず止まって人に�
 | `SWARM_COMPLETED` | `finalize` | バッチ終了。収束数と失敗数の集計 |
 | `SWARM_DEGRADED` | `prepare` | `AIDLC_USE_SWARM=1` を要求したが Workflow ツールが不在で、並列サブエージェントに格下げした記録 |
 
-`SWARM_DEGRADED` が示すのは、収束判定にとって実行基盤の違い（インライン Workflow か並列サブエージェントか）は見えないが、その格下げ自体は監査に残す、という設計です。レフェリーは実行基盤の差を収束の結果から消しますが、起きた事実は記録します。`STATE_FORKED` や `AUDIT_MERGED` を含む監査イベント全体の体系は、別記事「[状態と監査](https://qiita.com/takeshishimada/items/72234648bb4400cedf53)」で扱います。Bolt や code-generation ステージそのものの位置づけは、別記事「[工程とエージェント](https://qiita.com/takeshishimada/items/418d7b9e17192e8add85)」で扱います。
+レフェリーの収束判定は、実行基盤の違い（インライン Workflow か並列サブエージェントか）を見ません。それでも、格下げが起きた事実そのものは `SWARM_DEGRADED` として監査に残します。`STATE_FORKED` や `AUDIT_MERGED` を含む監査イベント全体の体系は、別記事「[状態と監査](https://qiita.com/takeshishimada/items/72234648bb4400cedf53)」で扱います。Bolt や code-generation ステージそのものの位置づけは、別記事「[工程とエージェント](https://qiita.com/takeshishimada/items/418d7b9e17192e8add85)」で扱います。
 
 ## 参照元
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/tools/aidlc-swarm.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-swarm.ts) | 収束レフェリー本体。冒頭コメントが設計の正本（THE SPLIT＝三者分担、lying-conductor guard）。`prepare` / `check` / `finalize` の3サブコマンド、anti-tamper、マージ前のレビューレシート再検証（`BOLT_STARTED` 以降の `REVIEW_COMPLETED` 照合）、直列マージ、型付きエンベロープ |
-| [`core/tools/aidlc-worktree.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-worktree.ts) | ユニット毎の隔離 git worktree の作成・マージ・破棄。`.aidlc/worktrees/bolt-<slug>/`、兄弟 worktree からの実行拒否 |
-| [`core/tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-directive.ts) | `InvokeSwarmDirective`（最小形・`units` ＋任意の `repo`）。エンジンが自律モードの付与下で発行し、コンダクターが取り込む旨のコメント |
-| [`core/tools/aidlc-bolt.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-bolt.ts) | `start --worktree`（状態・監査・グラフを fork）、`complete --merge`（base への統合）、`release-merge`（直列マージのロック解放） |
-| [`core/tools/aidlc-audit.ts`](https://github.com/awslabs/aidlc-workflows/blob/9f91454/core/tools/aidlc-audit.ts) | 監査イベント登録配列。`SWARM_STARTED` / `SWARM_UNIT_CONVERGED` / `SWARM_UNIT_FAILED` / `SWARM_BATON_RETURNED` / `SWARM_COMPLETED` / `SWARM_DEGRADED` の実在と見出し |
+| [`core/tools/aidlc-swarm.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-swarm.ts) | 収束レフェリー本体。冒頭コメントが設計の正本（THE SPLIT＝三者分担、lying-conductor guard）。`prepare` / `check` / `finalize` の3サブコマンド、anti-tamper、マージ前のレビューレシート再検証（`BOLT_STARTED` 以降の `REVIEW_COMPLETED` 照合）、直列マージ、型付きエンベロープ |
+| [`core/tools/aidlc-worktree.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-worktree.ts) | ユニット毎の隔離 git worktree の作成・マージ・破棄。`.aidlc/worktrees/bolt-<slug>/`、兄弟 worktree からの実行拒否 |
+| [`core/tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-directive.ts) | `InvokeSwarmDirective`（最小形・`units` ＋任意の `repo`）。エンジンが自律モードの付与下で発行し、コンダクターが取り込む旨のコメント |
+| [`core/tools/aidlc-bolt.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-bolt.ts) | `start --worktree`（状態・監査・グラフを fork）、`complete --merge`（base への統合）、`release-merge`（直列マージのロック解放） |
+| [`core/tools/aidlc-audit.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-audit.ts) | 監査イベント登録配列。`SWARM_STARTED` / `SWARM_UNIT_CONVERGED` / `SWARM_UNIT_FAILED` / `SWARM_BATON_RETURNED` / `SWARM_COMPLETED` / `SWARM_DEGRADED` の実在と見出し |
 
 ---
 
