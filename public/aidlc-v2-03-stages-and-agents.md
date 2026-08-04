@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -93,7 +93,7 @@ flowchart LR
 
 実際に作るフェーズです。
 
-構築は一度に最後まで作りきらず、**Bolt**（構築の実行単位）という単位で小さく区切って繰り返します。1つの Bolt は、1つ以上の作業単位を束ねて、機能設計からコード生成までをひと通り通すまとまりです。なかでも最初の Bolt だけは、機能を最小限に絞り、アーキテクチャの全層を端から端まで貫く一本道を先に作ります。土台が本当に成立するかを、機能を加える前に確かめる狙いです。問題がなければ、残りの Bolt で機能を加えていきます。ビルド・テストと CI パイプラインは、各 Bolt の繰り返しとは切り離され、全 Bolt 完了後に一度だけ走ります。
+構築は一度に最後まで作りきらず、**Bolt**（構築の実行単位）という単位で小さく区切って繰り返します。1つの Bolt は、1つ以上の作業単位を束ねて、機能設計からコード生成までをひと通り通すまとまりです。なかでも最初の Bolt だけは、機能を最小限に絞り、アーキテクチャの全層を端から端まで通す一本道を先に作ります。土台が本当に成立するかを、機能を加える前に確かめる狙いです。問題がなければ、残りの Bolt で機能を加えていきます。ビルド・テストと CI パイプラインは、各 Bolt の繰り返しとは切り離され、全 Bolt 完了後に一度だけ走ります。
 
 この最初の Bolt のあと、以降を自律で走らせるか Bolt ごとに毎回ゲートを挟むかを一度だけ選びます。最初の Bolt と自律モードの仕組みは別記事「[ウォーキングスケルトン](https://qiita.com/takeshishimada/items/7a24030b9d8905f379ed)」で扱います。設計を担うのは**アーキテクトエージェント**、コード生成は**デベロッパーエージェント**、ビルド・テストは**品質エージェント**です。
 
@@ -160,7 +160,7 @@ AI-DLC v2 は、担当範囲の狭い専門家を何十体も並べる方式を�
 
 14体目は**コンポーザー**（`aidlc-composer-agent`）です。成果物を作るわけでも、レビューするわけでもありません。担当するのは「**今回どのステージを通すか**」を組み立てる仕事です。
 
-作業内容を書いて `/aidlc` を呼ぶと、キーワードから既存スコープが特定できる場合はそれを名指しして確認を求めます。曖昧な場合や既存のどれにも当てはまらない場合は、スコープを組む提案が出ます。人がそれに応じると、このコンポーザーが起動します。作業内容とワークスペースの走査結果を読み、実行する／飛ばすステージの一覧を飛ばす理由つきで提案し、承認されたらそれをスコープとして書き出してワークフローを始めます。
+作業内容を書いて `/aidlc` を呼ぶと、キーワードから既存スコープが特定できる場合はそれを名指しして確認を求めます。曖昧な場合や既存のどれにも当てはまらない場合は、スコープを組む提案が出ます。人がそれに応じると、このコンポーザーが起動します。作業内容とワークスペースの走査結果を読み、実行するステージと飛ばすステージの一覧を、飛ばす理由を添えて提案し、承認されたらそれをスコープとして書き出してワークフローを始めます。
 
 ステージを持たないので、ここまでの一覧表には現れません。スコープを組む機構そのものは別記事「[スコープ](https://qiita.com/takeshishimada/items/c232fb2e994e7b567a5c)」で扱います。
 
@@ -171,11 +171,11 @@ AI-DLC v2 は、担当範囲の狭い専門家を何十体も並べる方式を�
 この2つの軸を重ねると、AI-DLC v2 の動きが見えてきます。
 
 - **アーキテクトエージェントの担当範囲が最も広い。** 6ステージ・3フェーズを横断し、設計の中心軸として全体に及びます。
-- **デベロッパーエージェントは、構想・構築・運用の3フェーズを縦に貫く。** 既存コードのリバースエンジニアリングからコード生成、デプロイ支援までを1体で担います。
+- **デベロッパーエージェントは、構想・構築・運用の3フェーズにまたがる。** 既存コードのリバースエンジニアリングからコード生成、デプロイ支援までを1体で担います。
 - **コンプライアンスと DevSecOps は補佐専任。** 自分が主担当のステージは持たず、ほかのエージェントが率いるステージに規制・セキュリティの観点を加え続けます。専門の担当を独立させず、必要な場面に加わる形です。
 - **オペレーションエージェントが次へつなぐ。** 運用で得た知見をプロダクトエージェントへ返し、次のサイクルの起点を作ります。
 
-工程が「縦」の流れだとすれば、エージェントは複数のステージにまたがって「横」に伸びます。この縦横が噛み合うことで、引き継ぎを最小限にしながらライフサイクル全体が回ります。
+工程が「縦」の流れだとすれば、エージェントは複数のステージにまたがって「横」に伸びます。この縦と横が重なることで、引き継ぎを最小限にしながらライフサイクル全体が回ります。
 
 ---
 
@@ -194,11 +194,11 @@ AI-DLC v2 の工程とエージェントを、2つの軸でたどってきまし
 
 | ファイル | 内容 |
 | --- | --- |
-| `core/` のステージ `.md`（[32本](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/aidlc-common/stages)）／[`tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-graph.ts) | 5フェーズ32ステージとその依存グラフ（コンパイラ） |
-| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | 主担当（Lead）・補佐（Support）の割り当て、フェーズ境界検証、承認ゲート |
-| [`core/agents/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/agents)（14ファイル） | エージェント14体（成果物を作る11体＋レビュー専任2体＋コンポーザー1体） |
-| [`agents/aidlc-architecture-reviewer-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/agents/aidlc-architecture-reviewer-agent.md)／[`aidlc-product-lead-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/agents/aidlc-product-lead-agent.md) | レビュー専任の2体 |
-| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/conductor.md) | 委譲（`Task`）はコンダクター専用・エージェントは互いを呼ばない |
+| `core/` のステージ `.md`（[32本](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/aidlc-common/stages)）／[`tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-graph.ts) | 5フェーズ32ステージとその依存グラフ（コンパイラ） |
+| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | 主担当（Lead）・補佐（Support）の割り当て、フェーズ境界検証、承認ゲート |
+| [`core/agents/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/agents)（14ファイル） | エージェント14体（成果物を作る11体＋レビュー専任2体＋コンポーザー1体） |
+| [`agents/aidlc-architecture-reviewer-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/agents/aidlc-architecture-reviewer-agent.md)／[`aidlc-product-lead-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/agents/aidlc-product-lead-agent.md) | レビュー専任の2体 |
+| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/conductor.md) | 委譲（`Task`）はコンダクター専用・エージェントは互いを呼ばない |
 
 ---
 

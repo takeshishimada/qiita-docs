@@ -19,13 +19,13 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
 ## 概要
 
-承認ゲートは、各ステージ（初期化を除く）の末尾でワークフローをいったん止め、承認者に「承認するか、やり直す（差し戻す）か」を尋ねます。AI-DLC v2 で成果物の中身を見て止められるのは、この承認ゲートだけです。成果物の保存ごとに走るセンサーも、ステージを独立評価するレビュアーも、判定を理由に進行を止めることはありません。中身を見て止める力は、承認ゲートに一点だけ集約されています。
+承認ゲートは、各ステージ（初期化を除く）の末尾でワークフローをいったん止め、承認者に「承認するか、やり直す（差し戻す）か」を尋ねます。AI-DLC v2 で成果物の中身を見て止められるのは、この承認ゲートだけです。成果物の保存ごとに走るセンサーも、ステージを独立評価するレビュアーも、判定を理由に進行を止めることはありません。
 
 本記事では、その「止める」がプロンプト規則とフックの両側からどう担保され、承認・差し戻し・再入がどんな状態マシンとして動くのかを読み解きます。あわせて、差し戻しが続いたときの逃げ道や、証拠のない完了を拒む2つのガード（宣言した成果物の実在と、人が動いた証拠）まで見ていきます。
 
@@ -104,7 +104,7 @@ stateDiagram-v2
 - センサー … 成果物の保存ごとに走る決定論的なチェック。引っかかっても止まらない。詳しくは別記事「[センサー](https://qiita.com/takeshishimada/items/5f8dbb62f25c1a09a257)」で扱います。
 - レビュアー … 一部のステージで成果物を独立評価し、READY／NOT-READY を返す。NOT-READY でも判定を理由に止まることはない。詳しくは別記事「[レビュアー](https://qiita.com/takeshishimada/items/624d83e946e86e4b1553)」で扱います。
 
-どちらも判定そのものは助言で、内容を理由に進行を止めることはありません。レビュアーは承認ゲートの前に走りますが、上限まで往復しても NOT-READY のままなら、未解決の指摘を添えてそのまま人に渡されます。判定の中身が問われないだけで、**レビューが走った記録そのものは完了の前提条件**です。記録が無ければステージは完了できません（後述）。
+どちらも判定そのものは助言で、内容を理由に進行を止めることはありません。レビュアーは承認ゲートの前に走りますが、上限まで往復しても NOT-READY のままなら、未解決の指摘を添えてそのまま人に渡されます。判定の中身が問われないだけで、**レビューが走った記録そのものは完了の前提条件**です。記録が無ければステージは完了できません。
 
 センサーやレビュアーの指摘は、承認ゲートで人が任意に参考にする材料です。中身を読んで判断できるのは、その材料を見た人だけです。だから、中身を見て止められるのは承認ゲートだけになります。
 
@@ -116,12 +116,12 @@ stateDiagram-v2
 
 承認ゲートは「人が止められる」仕組みですが、裏を返せば「中身を見ずに承認を連打すれば、成果物ゼロのまま全ステージを `[x]` にできてしまう」余地があります（空承認の罠）。これを決定論的なガードで塞ぎます。
 
-ステージを完了させる遷移（`approve`／`advance`／`finalize`／`complete-workflow`）は、`[x]` を付ける前にディスク上の証拠を検査します（`aidlc-state.ts` の `verifyStageArtifacts`）。
+ステージを完了させる遷移（`approve`／`advance`／`finalize`／`complete-workflow`）に加えて、ゲートを開く `gate-start` と差し戻し後の `revise` でも、`[x]` を付ける前にディスク上の証拠を検査します（`aidlc-state.ts` の `verifyStageArtifacts`）。
 
-1. **宣言した成果物の存在** … そのステージの `produces[]` のうち少なくとも1つが記録ディレクトリ 配下に実在しないと拒否（`produces` が空の初期化ステージは免除）。
+1. **宣言した成果物の存在** … そのステージの `produces[]` のうち少なくとも1つが記録ディレクトリ 配下に実在しないと拒否（`produces` が空のステージ──初期化フェーズの3本がこれ──は宣言が無いので素通り）。
 2. **`workspace_requires` ステージの実作業** … `workspace_requires: true` を持つステージ（現状 code-generation のみ）は、`aidlc/` ワークスペース外に実ソースの作業があることも要求する。計画 markdown だけ書いてコードが無い、という状態を弾く。
 
-これは「レビューして止める仕組み」ではありません。中身の良し悪しは判定せず、「宣言した出力が実在するか」という整合性のプリコンディションを課すだけです。空承認を拒むためのもので、中身を見て止められるのは承認ゲートだけ、という構図そのものは変わりません。CI・自動テストでは環境変数 `AIDLC_SKIP_ARTIFACT_GUARD=1` で外せます。バイパスはこれ1つだけです。
+これは「レビューして止める仕組み」ではありません。中身の良し悪しは判定せず、「宣言した出力が実在するか」という整合性のプリコンディションを課すだけです。空承認を拒むためのもので、中身を見て止められるのは承認ゲートだけ、という構図そのものは変わりません。CI・自動テストでは環境変数 `AIDLC_SKIP_ARTIFACT_GUARD=1` で外せます。人が意図的に外せるバイパスはこれ1つですが、ガードが検査を見送る条件は他にもあります。`produces` が空のステージ、作業単位ごとに走るステージで全ユニットが成果物を負わない場合、そして決着済みの自律スウォーム（成果物がワークツリー側にあってこの走査から見えないため、レフェリーの収束台帳を証拠に代えます）です。
 
 ---
 
@@ -161,7 +161,7 @@ stateDiagram-v2
 
 ## ゲートを通過する抜け道
 
-人が必ず止まる仕組みに、抜け道は1つだけ用意されています。差し戻しが延々と続いたときのためのものです。
+必ず人の判断を待つこの仕組みに、抜け道は1つだけ用意されています。差し戻しが延々と続いたときのためのものです。
 
 人が差し戻しを繰り返すと、ステージは `[?]`↔`[R]` を延々と往復しかねません。これを断つのが escape hatch（緊急脱出口）です（§1 Revision loop escape hatch）。同じステージで「Request Changes」が3周すると、以降の承認ゲートに第3の選択肢「Accept as-is（現状のまま受け入れる）」が現れます。選ぶと、監査ログに「N 周の差し戻しの末に現状で受け入れた」と記録し、ステージを完了扱いにして先へ進みます。2周目の時点で「あと1回やり直すと Accept as-is が出る」と予告も入ります。
 
@@ -185,14 +185,14 @@ stateDiagram-v2
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | §1 Approval Gates（HARD STOP RULE・NO EMERGENT・escape hatch・構築 Bolt ゲート）、§2 Completion Messages（Part 0 のゲート手順・gate-start 任意）、初期化3ステージ除外 |
-| [`core/tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-state.ts) | gate-start／approve／reject／revise の各サブコマンド、チェックボックス遷移・Revision Count・Recovered バックフィル・承認時の自動前進、`verifyStageArtifacts`（アーティファクト・ガード）、変異前に走る人の操作の検査と2つの carve-out |
-| [`core/tools/aidlc-lib.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-lib.ts) | `CHECKBOX_MAP`／`CHECKBOX_REVERSE`（`[ ]`/`[-]`/`[?]`/`[R]`/`[x]`/`[S]` の正本マッピング）。`humanActedSinceGate`（直前のゲート解決を境界にした人の操作の判定・時刻順の並べ替え）、`hasOpenGate`、`isAutonomousMode`、`humanPresenceGuardDisabled` |
-| [`core/tools/aidlc-log.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-log.ts) | 面談の回答を記録する `answer`。承認と同じ判定を共有し、`QUESTION_ANSWERED` 自体が次の境界になる |
-| [`core/hooks/aidlc-mint-presence.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/hooks/aidlc-mint-presence.ts) | `HUMAN_TURN` を追記する UserPromptSubmit フック。プロンプト本文を読まない、状態ファイルが無ければ書かない、失敗しても人のターンを止めない |
-| [`core/knowledge/aidlc-shared/audit-format.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/knowledge/aidlc-shared/audit-format.md) | ゲート関連4イベントの発火条件・発火元、`HUMAN_TURN` の定義と発火元 |
-| [`core/hooks/aidlc-stop.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/hooks/aidlc-stop.ts) | 転送ループ Stop フック。人待ちの状態（`[?]`/`[R]`、未回答の質問ファイル、スコープを組む提案、会話ターン）で停止を許可する4つの carve-out と、`done`/`parked` の終端許可（HARD STOP のフック側担保） |
-| [`core/aidlc-common/stages/initialization/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/aidlc-common/stages/initialization) | ゲートを持たない初期化3ステージ（workspace-scaffold／workspace-detection／state-init）の実ファイル |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | §1 Approval Gates（HARD STOP RULE・NO EMERGENT・escape hatch・構築 Bolt ゲート）、§2 Completion Messages（Part 0 のゲート手順・gate-start 任意）、初期化3ステージ除外 |
+| [`core/tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-state.ts) | gate-start／approve／reject／revise の各サブコマンド、チェックボックス遷移・Revision Count・Recovered バックフィル・承認時の自動前進、`verifyStageArtifacts`（アーティファクト・ガード）、変異前に走る人の操作の検査と2つの carve-out |
+| [`core/tools/aidlc-lib.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-lib.ts) | `CHECKBOX_MAP`／`CHECKBOX_REVERSE`（`[ ]`/`[-]`/`[?]`/`[R]`/`[x]`/`[S]` の正本マッピング）。`humanActedSinceGate`（直前のゲート解決を境界にした人の操作の判定・時刻順の並べ替え）、`hasOpenGate`、`isAutonomousMode`、`humanPresenceGuardDisabled` |
+| [`core/tools/aidlc-log.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-log.ts) | 面談の回答を記録する `answer`。承認と同じ判定を共有し、`QUESTION_ANSWERED` 自体が次の境界になる |
+| [`core/hooks/aidlc-mint-presence.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/hooks/aidlc-mint-presence.ts) | `HUMAN_TURN` を追記する UserPromptSubmit フック。プロンプト本文を読まない、状態ファイルが無ければ書かない、失敗しても人のターンを止めない |
+| [`core/knowledge/aidlc-shared/audit-format.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-shared/audit-format.md) | ゲート関連4イベントの発火条件・発火元、`HUMAN_TURN` の定義と発火元 |
+| [`core/hooks/aidlc-stop.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/hooks/aidlc-stop.ts) | 転送ループ Stop フック。人待ちの状態（`[?]`/`[R]`、未回答の質問ファイル、スコープを組む提案、会話ターン）で停止を許可する4つの carve-out と、`done`/`parked` の終端許可（HARD STOP のフック側担保） |
+| [`core/aidlc-common/stages/initialization/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/aidlc-common/stages/initialization) | ゲートを持たない初期化3ステージ（workspace-scaffold／workspace-detection／state-init）の実ファイル |
 
 ---
 

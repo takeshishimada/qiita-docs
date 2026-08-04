@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -142,12 +142,12 @@ contribution ファイルには、もう一つの役割があります。**完�
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | §5 Multi-agent stages（ensemble topologies）。4トポロジーの定義、役割が不変であること、コンダクターがバスであること、contribution ファイルの構造、mob の異議の仕分け、並行できないハーネスでの約束、完了の証拠 |
-| [`core/tools/aidlc-stage-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-stage-schema.ts) | `mode` の許容値と、`pipeline`／`mob` が空でない `support_agents` を要求する検証。`agent-team` が予約である旨 |
-| [`core/aidlc-common/stages/inception/practices-discovery.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/stages/inception/practices-discovery.md) | `subagent`（ハブとスポーク）の実例。主担当と3体の補佐 |
-| [`core/aidlc-common/stages/inception/reverse-engineering.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/stages/inception/reverse-engineering.md) | `pipeline`（2段の鎖）の実例 |
-| [`core/aidlc-common/stages/inception/user-stories.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/stages/inception/user-stories.md) | `mob` の実例。主担当と3体の補佐 |
-| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-orchestrate.ts) | 協働者の記録が欠けていると完了を拒む検査と、その無効化スイッチ `AIDLC_DISABLE_ENSEMBLE_EVIDENCE` |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | §5 Multi-agent stages（ensemble topologies）。4トポロジーの定義、役割が不変であること、コンダクターがバスであること、contribution ファイルの構造、mob の異議の仕分け、並行できないハーネスでの約束、完了の証拠 |
+| [`core/tools/aidlc-stage-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-stage-schema.ts) | `mode` の許容値と、`pipeline`／`mob` が空でない `support_agents` を要求する検証。`agent-team` が予約である旨 |
+| [`core/aidlc-common/stages/inception/practices-discovery.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/inception/practices-discovery.md) | `subagent`（ハブとスポーク）の実例。主担当と3体の補佐 |
+| [`core/aidlc-common/stages/inception/reverse-engineering.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/inception/reverse-engineering.md) | `pipeline`（2段の鎖）の実例 |
+| [`core/aidlc-common/stages/inception/user-stories.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/inception/user-stories.md) | `mob` の実例。主担当と3体の補佐 |
+| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-orchestrate.ts) | 協働者の記録が欠けていると完了を拒む検査と、その無効化スイッチ `AIDLC_DISABLE_ENSEMBLE_EVIDENCE` |
 
 ---
 

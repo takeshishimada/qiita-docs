@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -47,7 +47,7 @@ AI-DLC v2 には、ワークフローの振る舞いを調整する独立した�
 
 ## スコープが決めること
 
-スコープを1つ選ぶと、連鎖していくつかの既定が決まります。主なものは実行するステージの集合と深さの2つです。ほかにも、ウォーキングスケルトンを敷くか、テスト戦略をどうするか、専用の起動コマンドを持つかを、スコープのファイルが宣言します。
+スコープを1つ選ぶと、いくつかの既定がまとめて決まります。主なものは実行するステージの集合と深さで、ほかにも、ウォーキングスケルトンを敷くか、テスト戦略をどうするか、専用の起動コマンドを持つかを、スコープのファイルが宣言します。
 
 ```mermaid
 flowchart LR
@@ -78,7 +78,7 @@ flowchart LR
 | `workshop` | Standard（テストは Minimal） | `workshop`, `lab`, `training` | ゲート付きの集合演習 |
 | `enterprise` | Comprehensive | （なし） | 規制対応。全工程＋完全な監査証跡 |
 
-`feature` と `enterprise` だけキーワードを持ちません。`enterprise` は「速さと引き換えに省く」ことをしない、意図的に手で選ぶスコープだからです。`feature` は後述するとおりキャッチオール（取りこぼしの受け皿）で、どのキーワードにも当たらなかった入力が最後に落ちてくる既定値です。
+`feature` と `enterprise` だけキーワードを持ちません。`enterprise` は「速さと引き換えに省く」ことをしない、意図的に手で選ぶスコープだからです。`feature` はスコープ定義自身が「キャッチオール（取りこぼしの受け皿）」と書いており、キーワード推定の関数も、優先順位ラダーの最下段も、当たらなかったときは `feature` を返します。ただし後述するとおり、エンジンが自由文からワークフローを起こす経路では、この既定値は採用されません。
 
 ---
 
@@ -260,14 +260,14 @@ flowchart LR
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/agents/aidlc-composer-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/agents/aidlc-composer-agent.md) | コンポーザーのペルソナ。実装エントロピーの5成分、最小限で十分な構成、承認前に書き出さない規約、合成スコープが `keywords: []` を持つ理由、含める理由と外す理由の両方を述べる規約 |
-| [`core/knowledge/aidlc-composer-agent/composing.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/knowledge/aidlc-composer-agent/composing.md) | 構成を組む手順のナレッジ |
-| [`core/scopes/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/scopes)（9ファイル） | 9種のスコープ定義。各フロントマター（name / depth / keywords / description / testStrategy）と「なぜそのステージを EXECUTE/SKIP するか」の説明文 |
-| [`core/aidlc-common/stages/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/aidlc-common/stages)（32ファイル） | 全32ステージ。各フロントマターの `scopes:` リストが EXECUTE/SKIP の唯一の源泉（付録マトリクスはこれを集計） |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | §8 Depth Guidance に scope→depth 既定の対応表、テスト戦略の既定・上書きルール |
-| [`core/tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-utility.ts) | `inferScopeFromText()`：キーワードの単語境界マッチ・アルファベット順 first-match・5語超や不一致は `source: freeform`（既定に寄せず、スコープを組む提案へ回る） |
-| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-orchestrate.ts) | `resolveScope()`：state → `--scope` → 先頭のスコープ名 → 環境変数 → 既定 `feature` の優先順位 |
-| [`core/tools/aidlc-lib.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-lib.ts) | `loadScopeMapping()`：グリッド（`.stages`）＋ `.md` フロントマターを合成してスコープ定義を復元 |
+| [`core/agents/aidlc-composer-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/agents/aidlc-composer-agent.md) | コンポーザーのペルソナ。実装エントロピーの5成分、最小限で十分な構成、承認前に書き出さない規約、合成スコープが `keywords: []` を持つ理由、含める理由と外す理由の両方を述べる規約 |
+| [`core/knowledge/aidlc-composer-agent/composing.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-composer-agent/composing.md) | 構成を組む手順のナレッジ |
+| [`core/scopes/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/scopes)（9ファイル） | 9種のスコープ定義。各フロントマター（name / depth / keywords / description / testStrategy）と「なぜそのステージを EXECUTE/SKIP するか」の説明文 |
+| [`core/aidlc-common/stages/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/aidlc-common/stages)（32ファイル） | 全32ステージ。各フロントマターの `scopes:` リストが EXECUTE/SKIP の唯一の源泉（付録マトリクスはこれを集計） |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | §8 Depth Guidance に scope→depth 既定の対応表、テスト戦略の既定・上書きルール |
+| [`core/tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-utility.ts) | `inferScopeFromText()`：キーワードの単語境界マッチ・アルファベット順 first-match・5語超や不一致は `source: freeform`（既定に寄せず、スコープを組む提案へ回る） |
+| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-orchestrate.ts) | `resolveScope()`：state → `--scope` → 先頭のスコープ名 → 環境変数 → 既定 `feature` の優先順位 |
+| [`core/tools/aidlc-lib.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-lib.ts) | `loadScopeMapping()`：グリッド（`.stages`）＋ `.md` フロントマターを合成してスコープ定義を復元 |
 
 ---
 

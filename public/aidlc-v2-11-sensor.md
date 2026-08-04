@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -41,7 +41,7 @@ agreed_posting_campaign_term: false
 
 ## 5本のセンサー
 
-出荷時のセンサーは5本。すべて `kind: deterministic`・`default_severity: advisory` で、`matches:` グロブ（対象ファイルをワイルドカードで絞り込む指定）で「どのファイルの保存に反応するか」が決まります。
+5本はすべて `kind: deterministic`・`default_severity: advisory` で、`matches:` グロブ（対象ファイルをワイルドカードで絞り込む指定）で「どのファイルの保存に反応するか」が決まります。
 
 | id | category | matches | timeout | 何を見るか |
 |---|---|---|---|---|
@@ -103,7 +103,7 @@ flowchart TD
 | 合格（`pass: true`） | SENSOR_PASSED | なし |
 | **不合格（`pass: false`）** | **SENSOR_FAILED**（詳細ファイル付き） | なし（人が任意に参考にする情報） |
 | ツール不在（exit 127） | SENSOR_PASSED（Note: tool-unavailable） | なし |
-| 出力JSONが壊れ／不正 | SENSOR_PASSED（Note: script-error: bad-output） | なし |
+| 出力 JSON が壊れ／不正 | SENSOR_PASSED（Note: script-error: bad-output） | なし |
 | 起動失敗・想定外の異常終了 | SENSOR_PASSED（Note: script-error: …） | なし |
 | タイムアウト | SENSOR_BUDGET_OVERRIDE | なし |
 | 判定は FAILED だが詳細ファイルを書けない | SENSOR_PASSED（Note: script-error: detail-write-failed） | なし |
@@ -137,15 +137,15 @@ AI-DLC v2 で止めない検証はもう一つあります。ステージの節�
 
 | ファイル | 内容 |
 |---------|------|
-| [`core/sensors/aidlc-linter.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/sensors/aidlc-linter.md) | linter センサーの マニフェスト。`matches: **/*.{ts,js}`・category code-quality・既定 eslint・失敗時の詳細ファイル |
-| [`core/sensors/aidlc-type-check.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/sensors/aidlc-type-check.md) | type-check センサーの マニフェスト。`matches: **/*.{ts,tsx}`・既定 tsc |
-| [`core/sensors/aidlc-required-sections.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/sensors/aidlc-required-sections.md) | required-sections の マニフェスト。H2≥2 の汎用チェック、`unit-of-work-dependency.md` の `units:` DAG 追加検査、テンプレート上書き層（team → framework-default → フロア。GA は既定テンプレ空出荷）、`matches: **/{aidlc-docs,intents}/**` |
-| [`core/sensors/aidlc-upstream-coverage.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/sensors/aidlc-upstream-coverage.md) | upstream-coverage の マニフェスト。`consumes:` からの導出 |
-| [`core/sensors/aidlc-claim-sources.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/sensors/aidlc-claim-sources.md) | claim-sources の マニフェスト。category `document-provenance`（3つめの系統）、意図キャプチャの主張が確認済み出典レジスタと回答に解決するかを検査 |
-| [`core/hooks/aidlc-sensor-fire.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/hooks/aidlc-sensor-fire.ts) | 保存時フック（PostToolUse Write\|Edit）。`sensors_applicable` を読み、`matches` 合致分を起動。常に exit 0 |
-| [`core/tools/aidlc-sensor.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-sensor.ts) | センサーディスパッチャ。Fire id 採番・`SENSOR_FIRED`／終端行の発行・結果の判定表・詳細ファイル書き出し また upstream-coverage の検査対象を実在する消費物だけに絞る（生産者ディレクトリでの実在判定＝codekb・per-unit・通常の3経路、記録が解決できないときはフェイルオープン）。|
-| [`core/tools/aidlc-sensor-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-sensor-schema.ts) | マニフェスト スキーマ。`kind: deterministic`・`default_severity: advisory` 以外を不許可、`matches:` は任意 |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | §13 学習ゲート。センサー化の two-write install（マニフェスト 生成＋ステージ `sensors:` への id 追記）と `SENSOR_PROPOSED` |
+| [`core/sensors/aidlc-linter.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/sensors/aidlc-linter.md) | linter センサーの マニフェスト。`matches: **/*.{ts,js}`・category code-quality・既定 eslint・失敗時の詳細ファイル |
+| [`core/sensors/aidlc-type-check.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/sensors/aidlc-type-check.md) | type-check センサーの マニフェスト。`matches: **/*.{ts,tsx}`・既定 tsc |
+| [`core/sensors/aidlc-required-sections.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/sensors/aidlc-required-sections.md) | required-sections の マニフェスト。H2≥2 の汎用チェック、`unit-of-work-dependency.md` の `units:` DAG 追加検査、テンプレート上書き層（team → framework-default → フロア。GA は既定テンプレ空出荷）、`matches: **/{aidlc-docs,intents}/**` |
+| [`core/sensors/aidlc-upstream-coverage.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/sensors/aidlc-upstream-coverage.md) | upstream-coverage の マニフェスト。`consumes:` からの導出 |
+| [`core/sensors/aidlc-claim-sources.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/sensors/aidlc-claim-sources.md) | claim-sources の マニフェスト。category `document-provenance`（3つめの系統）、意図キャプチャの主張が確認済み出典レジスタと回答に解決するかを検査 |
+| [`core/hooks/aidlc-sensor-fire.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/hooks/aidlc-sensor-fire.ts) | 保存時フック（PostToolUse Write\|Edit）。`sensors_applicable` を読み、`matches` 合致分を起動。常に exit 0 |
+| [`core/tools/aidlc-sensor.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-sensor.ts) | センサーディスパッチャ。Fire id 採番・`SENSOR_FIRED`／終端行の発行・結果の判定表・詳細ファイル書き出し また upstream-coverage の検査対象を実在する消費物だけに絞る（生産者ディレクトリでの実在判定＝codekb・per-unit・通常の3経路、記録が解決できないときはフェイルオープン）。|
+| [`core/tools/aidlc-sensor-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-sensor-schema.ts) | マニフェスト スキーマ。`kind: deterministic`・`default_severity: advisory` 以外を不許可、`matches:` は任意 |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | §13 学習ゲート。センサー化の two-write install（マニフェスト 生成＋ステージ `sensors:` への id 追記）と `SENSOR_PROPOSED` |
 
 ---
 

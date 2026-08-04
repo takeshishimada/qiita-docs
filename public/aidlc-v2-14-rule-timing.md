@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -105,7 +105,7 @@ const SCOPE_PRIORITY: Record<string, number> = {
 ]
 ```
 
-ルール階層は org→team→project→phase の4層です。確定した学習は独立ファイルではなく `team.md` ／ `project.md` に **practice（確定した学習をルールとして書いた項目）として直接書かれる**ため、learnings 用の層は要りません。学習でルールが増えていく仕組みは、別記事「[学習ループ](https://qiita.com/takeshishimada/items/dd7f3d034ee2c137cff5)」で扱います。
+確定した学習は独立ファイルではなく `team.md` ／ `project.md` に **practice（ルールとして書き下した一行）として直接書かれる**ため、learnings 用の層は要りません。学習でルールが増えていく仕組みは、別記事「[学習ループ](https://qiita.com/takeshishimada/items/dd7f3d034ee2c137cff5)」で扱います。
 
 ここで固定されるのは「**どのファイルが効くか**」であって、「その中身」ではありません。中身はステージに入る時点でエンジンが読み、`load-steering` に載せて送ります。コンパイルが決めるのは対象、配送が運ぶのは本文、という分担です。指示を出す機構そのものは、別記事「[進行の中核](https://qiita.com/takeshishimada/items/c3ac7c2223e5c7020d82)」で扱います。
 
@@ -134,15 +134,15 @@ flowchart LR
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-directive.ts) | `LoadSteeringDirective` の `rules_content`（パス＋本文）と `continue_token`。ナレッジに当たるフィールドはどの指示にも無い（push の根拠）。`RunStageDirective` の `rules_in_context` は配送済みのルール束のパスの一覧、`context_warnings` はペルソナ・ナレッジ側の警告 |
-| [`core/tools/aidlc-steering.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-steering.ts) | ルール束の解決と読み取り。アクティブ空間へのパス解決、UTF-8 の厳格な読み込み、中身の無いテンプレートの除外。エンジンと配送フックが共用する |
-| [`core/hooks/aidlc-dispatch-rules.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/hooks/aidlc-dispatch-rules.ts) | エージェントの起動時に同じルール本文をブリーフへ追記するフック（コンポーザー1体のみ除外）。ダイジェストの目印を含めて揃っていなければ配送済みとみなさない |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | §5 ナレッジ読み込み順（1段目がルール、2〜5段目がナレッジ、全ステージで always）と、inline のステージ向け手順（`load-steering` の適用から始まる）。pull 側の機構 |
-| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-orchestrate.ts) | 分割（`markdownSections` → `splitRuleText` → `steeringChunks`）と継続トークンの署名・検証（`steeringTokenMac` / `encodeSteeringToken`）。1指示あたりの上限 `DIRECTIVE_MAX_BYTES` |
-| [`core/tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-graph.ts) | `SCOPE_PRIORITY` による `org→team→project→phase` の4層解決、`rules_in_context` のコンパイル時固定 |
-| [`core/memory/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/memory) | ルールファイル本体（`org.md` / `team.md` / `project.md` ＋ `phases/<phase>.md`） |
-| [`core/knowledge/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/knowledge) | pull されるナレッジの本体（横断 `aidlc-shared/` 9本＋エージェント別14体×1〜7本） |
-| [`core/tools/aidlc-learnings.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-learnings.ts) | 確定学習を practice として `team.md` ／ `project.md` に追記（4層が増えない理由） |
+| [`core/tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-directive.ts) | `LoadSteeringDirective` の `rules_content`（パス＋本文）と `continue_token`。ナレッジに当たるフィールドはどの指示にも無い（push の根拠）。`RunStageDirective` の `rules_in_context` は配送済みのルール束のパスの一覧、`context_warnings` はペルソナ・ナレッジ側の警告 |
+| [`core/tools/aidlc-steering.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-steering.ts) | ルール束の解決と読み取り。アクティブ空間へのパス解決、UTF-8 の厳格な読み込み、中身の無いテンプレートの除外。エンジンと配送フックが共用する |
+| [`core/hooks/aidlc-dispatch-rules.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/hooks/aidlc-dispatch-rules.ts) | エージェントの起動時に同じルール本文をブリーフへ追記するフック（コンポーザー1体のみ除外）。ダイジェストの目印を含めて揃っていなければ配送済みとみなさない |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | §5 ナレッジ読み込み順（1段目がルール、2〜5段目がナレッジ、全ステージで always）と、inline のステージ向け手順（`load-steering` の適用から始まる）。pull 側の機構 |
+| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-orchestrate.ts) | 分割（`markdownSections` → `splitRuleText` → `steeringChunks`）と継続トークンの署名・検証（`steeringTokenMac` / `encodeSteeringToken`）。1指示あたりの上限 `DIRECTIVE_MAX_BYTES` |
+| [`core/tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-graph.ts) | `SCOPE_PRIORITY` による `org→team→project→phase` の4層解決、`rules_in_context` のコンパイル時固定 |
+| [`core/memory/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/memory) | ルールファイル本体（`org.md` / `team.md` / `project.md` ＋ `phases/<phase>.md`） |
+| [`core/knowledge/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/knowledge) | pull されるナレッジの本体（横断 `aidlc-shared/` 9本＋エージェント別14体×1〜7本） |
+| [`core/tools/aidlc-learnings.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-learnings.ts) | 確定学習を practice として `team.md` ／ `project.md` に追記（4層が増えない理由） |
 
 > 補足（解決チェーンの層数の食い違い）：ルールの解決チェーンについては、実装とドキュメントに食い違いが残っています。コードは4層ですが、`rules-reading.md` と `core/templates/onboarding.md` の2ファイルは「`org → team → project → phase → stage` の5層」と書いています。`stage` 層は予約されているだけで実体がなく、コンパイラの定数にも含まれません。本記事はコードを正としています。
 

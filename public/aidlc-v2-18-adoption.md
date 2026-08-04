@@ -19,13 +19,13 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
 ## 概要
 
-AI-DLC v2 を自分のチームと案件に入れるべきか。この問いに、一次資料（`core/`）は直接の答えを持ちません。core で裏取りできるのは「何を・どこまで・どんな前提でできるか」という能力と制約までで、そこから先の「だから誰に向くか」は読み手が引く推論です。ただ一つ、想定用途を公式が一語で明言した一次資料があります。9種あるスコープそれぞれの `description` です。
+AI-DLC v2 を自分のチームと案件に入れるべきか。この問いに、一次資料（`core/`）は直接の答えを持ちません。core で裏取りできるのは「何を・どこまで・どんな前提でできるか」という能力と制約までで、そこから先の「だから誰に向くか」は読み手が引く推論です。ただ一つ、想定用途を公式が一行で明言した一次資料があります。9種あるスコープそれぞれの `description` です。
 
 本記事では、このスコープの想定用途を軸に据え、導入で引き受けるものと引き換えに得るものを並べて、どんなチーム・案件に素直に向くのかを読み解きます。
 
@@ -39,7 +39,7 @@ AI-DLC v2 を自分のチームと案件に入れるべきか。この問いに�
 
 ## 案件タイプという判断軸
 
-最初に効くのは「今回はどの種類の案件か」です。AI-DLC v2 は案件の種類を9つのスコープで表し、各スコープのファイルがフロントマターの `description` に「何のためのものか」を一語で書いています。これは推論ではなく、公式が置いた一次の表明です。
+最初に効くのは「今回はどの種類の案件か」です。AI-DLC v2 は案件の種類を9つのスコープで表し、各スコープのファイルがフロントマターの `description` に「何のためのものか」を一行で書いています。これは推論ではなく、公式が置いた一次の表明です。
 
 この `description` を手がかりとして読み替えたのが次の表です。EXECUTE 列は、そのスコープが全32ステージのうち実際に何本を走らせるかを表します。
 
@@ -75,7 +75,7 @@ AI-DLC v2 の機械検証（センサー5種）は、すべて助言（advisory�
 
 ### 破壊的変更に追随する成熟度
 
-ワークフローの進行を記録する状態ファイルについて、その形式の移行ツールは出さない方針が core 自身に書かれています。古い形式を検出すると、診断コマンドは「ワークスペースをアーカイブして始め直せ」と促します。コード中のコメントはこれを「1.0 前は移行を出さない方針（pre-1.0 no-migration policy）」と明言します。宣言した成果物がディスクに無いと完了を拒むアーティファクト・ガードがあり、自動化スクリプトが止まりうる破壊的変更です。
+ワークフローの進行を記録する状態ファイルについて、その形式の移行ツールは出さない方針が core 自身に書かれています。古い形式を検出すると、診断コマンドは「ワークスペースをアーカイブして始め直せ」と促します。コード中のコメントはこれを「1.0 前は移行を出さない方針（pre-1.0 no-migration policy）」と明言します。宣言した成果物がディスクに無いとステージの完了を拒むアーティファクト・ガードも入っており、それを前提にしていなかった自動化スクリプトはそこで止まります。
 
 加えて、core は特定のモデルを指定しません。各エージェントが宣言するのは仕事の性質を表す `tier:` で、**判断を要する9体が `judgment`、レビュアー2体が `balanced`、定型の3体が `templated`** です。ビルドがこれを各ハーネスのモデル指定へ投影します。
 
@@ -87,11 +87,11 @@ Claude Code では `judgment` の9体が**セッションのモデルをその�
 
 ## 引き換えに得るもの
 
-引き受けるものの裏返しが、得るものです。承認ゲート・決定論的なエンジン・学習ループという三つの仕組みは、導入する側から見ると、人の主権（重要な決定はすべて承認ゲートを通る）、予測可能性（次にやることはエンジンが決め、LLM には委ねない）、学習の蓄積（人の修正を永続ルールにして以後へ持ち越す）になります。
+引き受けるものの裏返しが、得るものです。承認ゲート・決定論的なエンジン・学習ループという三つの仕組みは、導入する側から見ると、人の主導権（重要な決定はすべて承認ゲートを通る）、予測可能性（次にやることはエンジンが決め、LLM には委ねない）、学習の蓄積（人の修正を恒久ルールにして以後へ持ち越す）になります。
 
 | 得るもの | 何が嬉しいか |
 |---|---|
-| 主権 | AI の速度を使いつつ、意思決定は人が握り続けられる |
+| 主導権 | AI の速度を使いつつ、意思決定は人が握り続けられる |
 | 予測可能性 | 同じスコープなら同じ工程・同じ承認の形で進む |
 | 学習の蓄積 | チームの修正が一箇所に溜まり、次の案件は前回より賢く始まる |
 
@@ -122,22 +122,22 @@ flowchart TD
 
 ## まとめ
 
-導入判断は、core の事実を三段で読み替える作業です。案件タイプ（スコープの `description`）で向きを見当づけ、通す工程数で重さを測り、承認・レビュー・成熟度という引き受けるものと、主権・予測可能性・学習という得るものを天秤にかけます。一次資料に「導入すべき」の一語はありませんが、判断軸の材料はすべて core の中にあります。全体像は別記事「[概念マップ](https://qiita.com/takeshishimada/items/6391a320609276d0cfb6)」で扱います。
+導入判断は、core の事実を三段で読み替える作業です。案件タイプ（スコープの `description`）で向きを見当づけ、通す工程数で重さを測り、承認・レビュー・成熟度という引き受けるものと、主導権・予測可能性・学習という得るものを天秤にかけます。一次資料に「導入すべき」の一語はありませんが、判断軸の材料はすべて core の中にあります。全体像は別記事「[概念マップ](https://qiita.com/takeshishimada/items/6391a320609276d0cfb6)」で扱います。
 
 ## 参照元
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/scopes/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/scopes)（9ファイル）| スコープ9種の定義。各フロントマター `description`（想定用途の一次表明）と EXECUTE/SKIP の散文。判断軸テーブルの源泉 |
-| [`core/aidlc-common/stages/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/aidlc-common/stages)（32ファイル）| 全32ステージ。各フロントマター `scopes:` の集計が EXECUTE 実数（32/32/25/22/13/10/8/8/7）の源泉 |
-| [`knowledge/aidlc-shared/ai-dlc-principles.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/knowledge/aidlc-shared/ai-dlc-principles.md) | 「Not every task requires every stage.」と、7つの中核原則（人が決める／深さの適応／追跡可能な成果物／複数役割の専門性／創発的振る舞いの禁止／仮定より質問／矛盾の検出） |
-| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | 初期化3工程を除く全ステージの承認ゲート、自律は推論しない（遵守チェックリスト項目6）、autonomous/gated、ウォーキングスケルトンとラダープロンプト、失敗時の halt-and-ask |
-| [`core/sensors/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/sensors) | センサー5種すべて助言（advisory・止めない）|
-| [`core/agents/`](https://github.com/awslabs/aidlc-workflows/tree/9c9201b8/core/agents)（14ファイル）| エージェント14体の `tier:` 宣言（judgment 9／balanced 2／templated 3）。core は素のモデル名を持たず、ビルドが各ハーネスのキーへ投影する |
-| [`dist/claude/.claude/settings.json`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/dist/claude/.claude/settings.json) | ハーネス固有の出荷設定。Fable・Opus・Sonnet のモデル ID に付く `[1m]`（Haiku は据え置き）、`AWS_REGION`、事前承認ツール |
-| [`tools/aidlc-version.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-version.ts) | `AIDLC_VERSION = "2.5.33"` |
-| [`tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-utility.ts) | 旧版検出時の archive-and-reinit 促しと「pre-1.0 no-migration policy」 |
-| [`tools/aidlc-lib.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-lib.ts) | 配布物5種（Claude Code・Kiro CLI・Kiro IDE・Codex CLI・opencode）。ハーネスのディレクトリは4種（Kiro の2つが `.kiro` を共有）|
+| [`core/scopes/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/scopes)（9ファイル）| スコープ9種の定義。各フロントマター `description`（想定用途の一次表明）と EXECUTE/SKIP の散文。判断軸テーブルの源泉 |
+| [`core/aidlc-common/stages/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/aidlc-common/stages)（32ファイル）| 全32ステージ。各フロントマター `scopes:` の集計が EXECUTE 実数（32/32/25/22/13/10/8/8/7）の源泉 |
+| [`knowledge/aidlc-shared/ai-dlc-principles.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-shared/ai-dlc-principles.md) | 「Not every task requires every stage.」と、7つの中核原則（人が決める／深さの適応／追跡可能な成果物／複数役割の専門性／創発的振る舞いの禁止／仮定より質問／矛盾の検出） |
+| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | 初期化3工程を除く全ステージの承認ゲート、自律は推論しない（遵守チェックリスト項目6）、autonomous/gated、ウォーキングスケルトンとラダープロンプト、失敗時の halt-and-ask |
+| [`core/sensors/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/sensors) | センサー5種すべて助言（advisory・止めない）|
+| [`core/agents/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/agents)（14ファイル）| エージェント14体の `tier:` 宣言（judgment 9／balanced 2／templated 3）。core は素のモデル名を持たず、ビルドが各ハーネスのキーへ投影する |
+| [`dist/claude/.claude/settings.json`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/dist/claude/.claude/settings.json) | ハーネス固有の出荷設定。Fable・Opus・Sonnet のモデル ID に付く `[1m]`（Haiku は据え置き）、`AWS_REGION`、事前承認ツール |
+| [`tools/aidlc-version.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-version.ts) | `AIDLC_VERSION = "2.5.36"` |
+| [`tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-utility.ts) | 旧版検出時の archive-and-reinit 促しと「pre-1.0 no-migration policy」 |
+| [`tools/aidlc-lib.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-lib.ts) | 配布物5種（Claude Code・Kiro CLI・Kiro IDE・Codex CLI・opencode）。ハーネスのディレクトリは4種（Kiro の2つが `.kiro` を共有）|
 
 ---
 

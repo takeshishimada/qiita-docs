@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -63,7 +63,7 @@ agreed_posting_campaign_term: false
 
 そして READY は、**出発点ではなく到達点**です。レビュアーの仕事は成果物を肯定することではなく**反証すること**だと規約に定められています。欠陥は存在するものと仮定して探し、壊そうとして壊せなかったときに初めて READY になります。
 
-この姿勢には根拠の条件が付きます。**指摘は機械で確かめられる証拠に接地していなければなりません。** レビュアーは起動時に渡された検証ツールを実際に走らせ、成果物を受け入れ基準・ステージ定義・消費した上流の契約と突き合わせます。意見だけを支えにした指摘は提案にとどまり、NOT-READY の根拠にはなりません。
+この姿勢には根拠の条件が付きます。**指摘は機械で確かめられる証拠に裏づけられていなければなりません。** レビュアーは起動時に渡された検証ツールを実際に走らせ、成果物を受け入れ基準・ステージ定義・消費した上流の契約と突き合わせます。意見だけを支えにした指摘は提案にとどまり、NOT-READY の根拠にはなりません。
 
 ---
 
@@ -203,14 +203,14 @@ support がどう働くかは、ステージの `mode` によって変わりま�
 
 | ファイル | 内容 |
 |---------|------|
-| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | ステージプロトコル。レビュアーの起動・往復・判定の全手順と、レビュー後の学習ゲート |
-| [`core/agents/aidlc-architecture-reviewer-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/agents/aidlc-architecture-reviewer-agent.md) | 設計レビュアーの定義（視点・コアレビュー質問・READY の定義） |
-| [`core/agents/aidlc-product-lead-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/agents/aidlc-product-lead-agent.md) | プロダクトレビュアーの定義 |
-| [`core/knowledge/aidlc-architecture-reviewer-agent/reviewing.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/knowledge/aidlc-architecture-reviewer-agent/reviewing.md) | 設計者の目で見るチェック項目。`## Review` 形式・重大度・判定ルール・検証ツール結果表 |
-| [`core/knowledge/aidlc-product-lead-agent/reviewing.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/knowledge/aidlc-product-lead-agent/reviewing.md) | 顧客の目で見るチェック項目。`## Review` 形式・重大度・判定ルール |
-| [`core/aidlc-common/stages/inception/requirements-analysis.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/stages/inception/requirements-analysis.md) | `reviewer:` フロントマターの宣言例 |
-| [`core/hooks/aidlc-reviewer-scope.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/hooks/aidlc-reviewer-scope.ts) | 読み取り範囲を決定論的に縛る PreToolUse フック。作業単位をまたぐ読み書きと grep/glob を拒否し、渡された契約のパスへ差し戻す |
-| [`core/tools/aidlc-log.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-log.ts) | `review` サブコマンド。`REVIEW_REQUESTED`／`REVIEW_COMPLETED` の記録 |
+| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | ステージプロトコル。レビュアーの起動・往復・判定の全手順と、レビュー後の学習ゲート |
+| [`core/agents/aidlc-architecture-reviewer-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/agents/aidlc-architecture-reviewer-agent.md) | 設計レビュアーの定義（視点・コアレビュー質問・READY の定義） |
+| [`core/agents/aidlc-product-lead-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/agents/aidlc-product-lead-agent.md) | プロダクトレビュアーの定義 |
+| [`core/knowledge/aidlc-architecture-reviewer-agent/reviewing.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-architecture-reviewer-agent/reviewing.md) | 設計者の目で見るチェック項目。`## Review` 形式・重大度・判定ルール・検証ツール結果表 |
+| [`core/knowledge/aidlc-product-lead-agent/reviewing.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-product-lead-agent/reviewing.md) | 顧客の目で見るチェック項目。`## Review` 形式・重大度・判定ルール |
+| [`core/aidlc-common/stages/inception/requirements-analysis.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/inception/requirements-analysis.md) | `reviewer:` フロントマターの宣言例 |
+| [`core/hooks/aidlc-reviewer-scope.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/hooks/aidlc-reviewer-scope.ts) | 読み取り範囲を決定論的に縛る PreToolUse フック。作業単位をまたぐ読み書きと grep/glob を拒否し、渡された契約のパスへ差し戻す |
+| [`core/tools/aidlc-log.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-log.ts) | `review` サブコマンド。`REVIEW_REQUESTED`／`REVIEW_COMPLETED` の記録 |
 
 ---
 

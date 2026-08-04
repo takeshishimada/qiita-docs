@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -105,7 +105,7 @@ Intent → Requirement → Story → Architecture Component → Code Module → 
 
 では合否はどこで判定されるのか。それはコンダクター（LLM）がプロトコル規約に沿って行う知識作業です。`stage-protocol-governance.md` §13 が境界ごとに何を確かめるかを定め、そこから読み込まれる `verification.md` が「成果物を読み、鎖を組み立て、gap・orphan・矛盾を洗い出し、レポートを書き、人に提示する」という中身を定義しています。検証が失敗したときは、承認ゲートに合流します。
 
-検証の結果が進行にどう効くかで切り分けると、AI-DLC v2 には2つしかありません。
+検証の結果が進行にどう効くかで切り分けると、AI-DLC v2 の**機構は次の2つだけ**です。
 
 | 機構 | 進行への効き方 | 実体 |
 |----|---------|------|
@@ -143,13 +143,13 @@ flowchart TD
 
 | ファイル | 内容 |
 |---------|------|
-| [`core/aidlc-common/protocols/stage-protocol-governance.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol-governance.md) | §13 フェーズ境界検証の規約。3境界・検証手順・失敗時の合流を定義 |
-| [`core/knowledge/aidlc-shared/verification.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/knowledge/aidlc-shared/verification.md) | 検証方法論。トレーサビリティ鎖・状態指標・出力ファイルの定義 |
-| [`core/tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-state.ts) | `PHASE_VERIFIED` 監査イベントの発行（無条件・境界名のみのペイロード） |
-| [`core/tools/aidlc-audit.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-audit.ts) | `PHASE_VERIFIED` を含む監査イベント定義 |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | 承認ゲート。検証失敗時の合流先 |
-| [`core/sensors/aidlc-upstream-coverage.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/sensors/aidlc-upstream-coverage.md) | ステージ単位の助言センサー。`consumes:` 参照チェック（`default_severity: advisory`） |
-| [`core/tools/aidlc-sensor.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-sensor.ts) | センサー実装。全センサーの結果は advisory で進行を止めない |
+| [`core/aidlc-common/protocols/stage-protocol-governance.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol-governance.md) | §13 フェーズ境界検証の規約。3境界・検証手順・失敗時の合流を定義 |
+| [`core/knowledge/aidlc-shared/verification.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-shared/verification.md) | 検証方法論。トレーサビリティ鎖・状態指標・出力ファイルの定義 |
+| [`core/tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-state.ts) | `PHASE_VERIFIED` 監査イベントの発行（無条件・境界名のみのペイロード） |
+| [`core/tools/aidlc-audit.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-audit.ts) | `PHASE_VERIFIED` を含む監査イベント定義 |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | 承認ゲート。検証失敗時の合流先 |
+| [`core/sensors/aidlc-upstream-coverage.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/sensors/aidlc-upstream-coverage.md) | ステージ単位の助言センサー。`consumes:` 参照チェック（`default_severity: advisory`） |
+| [`core/tools/aidlc-sensor.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-sensor.ts) | センサー実装。全センサーの結果は advisory で進行を止めない |
 
 ---
 

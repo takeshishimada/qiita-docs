@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 1 日時点のコミット `9c9201b8`（AIDLC_VERSION 2.5.33、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -31,7 +31,7 @@ AI-DLC v2 の進行は、性質の異なる2つの主体が分担して回しま
 
 ## エンジンとコンダクターの分離
 
-進行の中核には、性質の異なる2つの主体がいます。
+エンジンとコンダクターは、正体も、担うことも重なりません。
 
 | | エンジン | コンダクター |
 |---|---|---|
@@ -78,8 +78,8 @@ AI-DLC v2 の進行は、性質の異なる2つの主体が分担して回しま
 | `run-stage` | lead・support エージェントを読み込み、`consumes`（入力成果物）を読み、ステージ本体を実行し、`produces`（出力）を書き、`memory.md` を保つ |
 | `dispatch-subagent` | `run-stage` と同じだが、ステージを Task で名前付きのワーカーに投げて実行する |
 | `invoke-swarm` | 構築のバッチを、N 個の作業コピー（worktree）に N 人のワーカーとして並列展開する |
-| `present-gate` | 学習ゲートを回してから承認ゲートを描画する |
-| `ask` | 構造化された質問を描画する（再開の選択・スコープ確認・自律ラダー） |
+| `present-gate` | 学習ゲートを回してから承認ゲートを人に提示する |
+| `ask` | 構造化された質問を人に提示する（再開の選択・スコープ確認・自律ラダー） |
 | `print` | 文面を逐語で表示して止まる（状況表示やヘルプ） |
 | `error` | エラーを表示して止まる |
 | `done` | ループを止める（ワークフロー完了、または単一ステージ完了） |
@@ -100,15 +100,15 @@ AI-DLC v2 の進行は、性質の異なる2つの主体が分担して回しま
 - `consumes` / `produces` — 入出力成果物の解決済み `<record>/...` パス。`consumes` に載るのは**ディスク上に実在する入力だけ**
 - `consumes_absent?` — 実在しない必須の入力。1件ずつ `expected` が付き、真なら「生産者が今回のスコープの経路に無い＝不在は設計どおり」、偽なら「生産者は経路上にあるのにファイルが無い＝本当の欠落」。コンダクターに読めないパスを渡さないための分離で、詳しくは別記事「[成果物の流れ](https://qiita.com/takeshishimada/items/46feb553f907f9eedd14)」で扱います
 - `reviewer?` / `reviewer_max_iterations?` — レビュアーを宣言するステージにだけ付く
-- `conductor_persona?` — ワークフロー最初の `run-stage` にだけ埋め込まれる実行品質の人格（後述）
+- `conductor_persona?` — ワークフロー最初の `run-stage` にだけ埋め込まれる実行品質のペルソナ（後述）
 - `next_stage` — このステージの次に来る、スコープ内のステージの表示名。承認の選択肢に出る「次へ進む」の文言はここから作られ、最後のステージでは「ワークフローを完了」になる
 - `unit?` — per-unit 構築ステージでエンジンが解決した具体的な作業単位名。作業単位ごとに `run-stage` を回す反復の1イテレーションである目印で、未カバーの作業単位ではゲートが抑止される
 
 ルール（従う義務のある制約）は本文が指示で届く一方、ナレッジ（参照用の手法）は指示にパスが載るだけで、本文はコンダクターが実行時に自分で読みに行きます。この非対称は指示の型にも表れます。ルールには本文を運ぶ `load-steering` があるのに、ナレッジ側は `inline_context_paths` にパスが並ぶだけで、本文を載せるフィールドがありません。ルールとナレッジの違いは別記事「[ルールとナレッジ](https://qiita.com/takeshishimada/items/33f3b2b401d4d3c1c266)」で、`unit?` の per-unit 解決は別記事「[成果物の流れ](https://qiita.com/takeshishimada/items/46feb553f907f9eedd14)」で扱います。
 
-### 一度だけ渡される実行人格
+### 一度だけ渡される実行ペルソナ
 
-コンダクターの「ステージをうまく回すための実行品質」の心得は、`aidlc-common/conductor.md` に一度だけ書かれています。スキルはこのファイルをパス参照しません。代わりにエンジンが中身を読み、ワークフロー最初の `run-stage` 指示に埋め込んで届けます。以降の指示には付きません（人格はセッション内で持続するため）。どこから始めても、同じコンダクター人格が追加の設定なしで行き渡る仕組みです。
+コンダクターの「ステージをうまく回すための実行品質」の心得は、`aidlc-common/conductor.md` に一度だけ書かれています。この心得はパスをたどって読ませる形では渡りません。エンジンが中身を読み、ワークフロー最初の `run-stage` 指示に埋め込んで届けます。以降の指示には付きません（ペルソナはセッション内で持続するため）。どこから始めても、同じコンダクターのペルソナが追加の設定なしで行き渡る仕組みです。
 
 ## 制御ループ
 
@@ -199,12 +199,12 @@ flowchart TD
 
 | ファイル | 内容 |
 | --- | --- |
-| [`tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-directive.ts) | 指示の凍結契約。10種の kind の判別共用体（`load-steering` を含む）・各フィールド・ランタイム検証。「engine↔conductor の凍結インターフェース」「状態なし・I/O なしの純粋な契約」、`GATE_UNRESOLVED` 番兵の定義 |
-| [`tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-orchestrate.ts) | エンジン本体。`next`（読み取り専用の問い合わせ）・`continue`（ルール配送の継続）・`report`（遷移のコミット）・`park`。「足すのは決定ルールとパス解決の2つ」、`present-gate`/`dispatch-subagent` を発行しないハンドラ、skeleton round-trip、`report` のゲート→終端ディスパッチ |
-| [`tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-graph.ts) | ステージグラフのライブラリ。「グラフは構造的真実＝DAG」「スコープはサブ DAG（EXECUTE スライス＋`requires_stage` エッジ）」「直列ランタイムは番号順に線形化」 |
-| [`tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/tools/aidlc-state.ts) | 状態の読み書きと遷移サブコマンド（`advance`/`approve`/`reject`/`complete-workflow`/`park` 等）。`report` が委ねる先。監査発行はこれらが内部で所有 |
-| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/conductor.md) | コンダクターの実行品質の人格。エンジンが最初の `run-stage` 指示に埋め込んで届ける |
-| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/9c9201b8/core/aidlc-common/protocols/stage-protocol.md) | 承認ゲート・完了メッセージと `report` フロー・状態追跡（監査はツール所有・追記専用） |
+| [`tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-directive.ts) | 指示の凍結契約。10種の kind の判別共用体（`load-steering` を含む）・各フィールド・ランタイム検証。「engine↔conductor の凍結インターフェース」「状態なし・I/O なしの純粋な契約」、`GATE_UNRESOLVED` 番兵の定義 |
+| [`tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-orchestrate.ts) | エンジン本体。`next`（読み取り専用の問い合わせ）・`continue`（ルール配送の継続）・`report`（遷移のコミット）・`park`。「足すのは決定ルールとパス解決の2つ」、`present-gate`/`dispatch-subagent` を発行しないハンドラ、skeleton round-trip、`report` のゲート→終端ディスパッチ |
+| [`tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-graph.ts) | ステージグラフのライブラリ。「グラフは構造的真実＝DAG」「スコープはサブ DAG（EXECUTE スライス＋`requires_stage` エッジ）」「直列ランタイムは番号順に線形化」 |
+| [`tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-state.ts) | 状態の読み書きと遷移サブコマンド（`advance`/`approve`/`reject`/`complete-workflow`/`park` 等）。`report` が委ねる先。監査発行はこれらが内部で所有 |
+| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/conductor.md) | コンダクターの実行品質のペルソナ。エンジンが最初の `run-stage` 指示に埋め込んで届ける |
+| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | 承認ゲート・完了メッセージと `report` フロー・状態追跡（監査はツール所有・追記専用） |
 
 ---
 
