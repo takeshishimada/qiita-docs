@@ -19,13 +19,13 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 4 日時点のコミット `c73ee984`（AIDLC_VERSION 2.5.37、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
 ## 概要
 
-AI-DLC v2 の各ステージは、版管理された markdown の成果物を1つずつ作ります。意図（intent）から始まり、要件・ストーリー・作業単位・設計を経てコードへ。フェーズが進むほど成果物の抽象度は下がり、解像度が上がっていきます。この段階的な詳細化が、成果物の流れの骨格をかたちづくります。
+AI-DLC v2 の各ステージは、版管理された markdown の成果物を1つずつ作ります。意図（intent）から始まり、要件・ストーリー・作業単位・設計を経てコードへ。フェーズが進むほど成果物の抽象度は下がり、解像度が上がっていきます。この段階的な詳細化が、成果物の流れの土台になります。
 
 成果物どうしは、安定IDを振って複写する方式ではつながりません。各ステージは上流の成果物を語彙名で名指しし、実体ファイルはそれを作った生産者のディレクトリに1か所だけ住みます。本記事では、名指しの連結・1成果物＝1生産者の不変条件・生産者ディレクトリへの配置・作業単位ごとのパス解決といった、成果物がどう作られ、どこに置かれ、どう名前でつながるかを読み解きます。
 
@@ -52,7 +52,7 @@ flowchart TB
   E --> F["code-generation<br/>code-summary ＋ 実コード"]
 ```
 
-意図が要件になり、要件がストーリーになり、ストーリーが作業単位に分割され、設計を経てコードになる。原則ファイルが掲げる原則3が、この核を方法論自身の言葉で宣言しています。各ステージは版管理された markdown を記録として残し、完全な決定記録（complete decision record）をつくる、と。各段は前段を素材にして作られます。
+意図が要件になり、要件がストーリーになり、ストーリーが作業単位に分割され、設計を経てコードになる。原則ファイルが掲げる原則3が、これを方法論自身の言葉で宣言しています。各ステージは版管理された markdown を記録として残し、完全な決定記録（complete decision record）をつくる、というものです。各段は前段を素材にして作られます。
 
 ## 名指しの連結と唯一の生産者
 
@@ -70,7 +70,7 @@ consumes:
 
 この連結が成り立つ前提が、**1つの成果物を `produces` するステージはちょうど1つ**という不変条件です。消費側はこの 1:1 を前提に、消費した成果物の生産者を一意に特定します（`producersOf(name)[0]` で確定）。実データでも確かめられ、全ステージの `produces` を集計すると**120個の成果物があり、同じ成果物を複数のステージが作る例は1つもありません**（これとは別に、ステージが条件つきで書く任意の成果物が `optional_produces` に2つあります）。グラフの検査（`validateScope`）は、生産者のいない consumes をエラーとして検出し、この 1:1 を守らせています。
 
-連結の起点は `intent-capture` です。このステージの `consumes` は空配列で、何も消費しません。ここから下流のすべての成果物が、名指しの連鎖でつながっていきます。
+連結の起点は `intent-capture` です。このステージの `consumes` は空配列で、何も消費しません。ここから下流のすべての成果物が、名指しで次々とつながっていきます。
 
 ## 生産者ディレクトリへの配置
 
@@ -106,7 +106,7 @@ AI-DLC v2 には「成果物に安定IDを振り、フェーズごとに複写�
 
 `required: false` の任意の入力が実在しない場合は、どちらにも載らず黙って落ちます。無くてもよい入力が無いことは、欠落ではないからです。
 
-この分け方があると、**コンダクターは読めないパスを渡されません**。不在は失敗した読み取りではなく、データとして届きます。復旧の手順にも「生産者がスコープ外なら、再実行という選択肢は無い。フォールバックで進め、欠けた成果物の中身を発明するな」という分岐があります。9つのステージ本体も、各入力を「あれば読む」形で書かれており、無かった場合に何を代わりに使うかが明記されています。
+この分け方があると、**コンダクターは読めないパスを渡されません**。不在は失敗した読み取りではなく、データとして届きます。復旧の手順にも「生産者がスコープ外なら、再実行という選択肢は無い。フォールバックで進め、欠けた成果物の中身を発明するな」という分岐があります。フォールバックを備えた9つのステージ本体も、各入力を「あれば読む」形で書かれており、無かった場合に何を代わりに使うかが明記されています。
 
 ## 必ず作るとは限らない成果物
 
@@ -118,7 +118,7 @@ AI-DLC v2 には「成果物に安定IDを振り、フェーズごとに複写�
 
 `optional_produces` は、**条件が揃ったときだけ書く成果物**を並べるフィールドです。現在2つあります。機能設計の `frontend-components`（作業単位が UI を持つときだけ）と、インフラ設計の `shared-infrastructure`（作業単位がインフラを共有するときだけ）です。
 
-`produces` から外れているので、**書かれていなくてもステージは完了できます**。バックエンドだけの作業単位が、中身の無い「該当なし」ファイルを置いて辻褄を合わせる必要はありません。書く場合の置き場所はエンジンが指示に載せるので、作るときの手順は変わりません。
+`produces` から外れているので、**書かれていなくてもステージは完了できます**。バックエンドだけの作業単位が、中身の無い「該当なし」ファイルを置いて形だけ揃える必要はありません。書く場合の置き場所はエンジンが指示に載せるので、作るときの手順は変わりません。
 
 ### 作業単位の種類による絞り込み
 
@@ -126,31 +126,31 @@ AI-DLC v2 には「成果物に安定IDを振り、フェーズごとに複写�
 
 ステージ側は `produces_kinds` というフィールドで、どの成果物がどの種類に効くかを宣言します。機能設計の例で言えば、業務ロジックのモデルは `service`／`ui`／`library` に効き、画面部品は `ui` にだけ効く、という具合です。
 
-種類を付けなければ、あるいはその成果物が表に載っていなければ、全部を要求します。ある作業単位について必要な成果物が1つも残らない場合、そのステージはその作業単位には適用されないものとして扱われます。
+種類を付けなければ、あるいはその成果物が `produces_kinds` に載っていなければ、全部を要求します。ある作業単位について必要な成果物が1つも残らない場合、そのステージはその作業単位には適用されないものとして扱われます。
 
 ## 作業単位ごとのパス解決
 
-構築フェーズの一部のステージは、作業単位（Unit of Work）ごとに1回ずつ走ります。per-unit かどうかの判定の拠り所は、ノードのフロントマターの **`for_each: unit-of-work`** です。該当するのは5ステージ（`nfr-requirements` / `nfr-design` / `functional-design` / `infrastructure-design` / `code-generation`）。これらの成果物は、`construction/<unit>/` を挟んだパスに解決されます。
+構築フェーズの一部のステージは、作業単位（Unit of Work）ごとに1回ずつ走ります。per-unit かどうかの判定の拠り所は、ノードのフロントマターの **`for_each: unit-of-work`** です。該当するのは5ステージ（`nfr-requirements` / `nfr-design` / `functional-design` / `infrastructure-design` / `code-generation`）で、前節の設計4ステージに `code-generation` を加えたものです。これらの成果物は、`construction/<unit>/` を挟んだパスに解決されます。
 
 ```
 <record>/construction/<unit>/<slug>/<name>.md
 ```
 
-`<unit>` というセグメントは、構造化された `produces` / `consumes` には一切現れません。フロントマターの配列はどこまでも素の名前で、作業単位のセグメントはエンジンがパスを組む瞬間に差し込まれます。
+`<unit>` というセグメントは、構造化された `produces` / `consumes` には一切現れません。フロントマターの配列はどこまでも素の名前で、作業単位のセグメントはエンジンがパスを組むときに差し込まれます。
 
-**この差し込みを、エンジンは作業単位ごとに回しながら行います。** コンパイル済みの作業単位 DAG があれば、エンジンは問い合わせのたびに**まだ成果物が揃っていない最初の作業単位**を選び、その**実名**を produces / consumes / memory のパスに差し込んだ run-stage を1つ発行します（解決済みの名前は `directive.unit` にも載ります）。「どこまで終わったか」の台帳は状態の追加フィールドではなく、ディスク上の成果物の有無で判定されるため、エンジンは読み取りのみ（read-only）のままです。リテラルのプレースホルダ `{unit-name}` が発行されるのは、作業単位 DAG が無いスコープやコンパイル前などの**フォールバックの場合だけ**に降格しました。なおこのプレースホルダが残ったままのパスは、前節の `consumes_absent` には載りません。実在するかどうかを判定できないためです。
+**この差し込みを、エンジンは作業単位ごとに回しながら行います。** コンパイル済みの作業単位 DAG があれば、エンジンは問い合わせのたびに**まだ成果物が揃っていない最初の作業単位**を選び、その**実名**を produces / consumes / memory のパスに差し込んだ run-stage を1つ発行します（解決済みの名前は `directive.unit` にも載ります）。「どこまで終わったか」の台帳は状態の追加フィールドではなく、ディスク上の成果物の有無で判定されるため、エンジンは読み取り専用のままです。リテラルのプレースホルダ `{unit-name}` が発行されるのは、作業単位 DAG が無いスコープやコンパイル前などの**フォールバックの場合だけ**です。なおこのプレースホルダが残ったままのパスは、前節の `consumes_absent` には載りません。実在するかどうかを判定できないためです。
 
 per-unit かどうかは、消費するステージではなく**所有者（生産者）の属性**で決まります。`functional-design`（per-unit）が `units-generation`（非 per-unit）の作った `unit-of-work` を消費するときは、所有者が per-unit でないため接頭辞は付かず `<record>/inception/units-generation/unit-of-work.md` に解決されます。住所はいつも所有者が決めるので、作業単位をまたいでも連結は壊れません。
 
-なお、各ステージの `.md` が持つ `outputs:` フロントマターは、ランタイムでは**非 load-bearing**（実行時には参照されない＝パス契約ではなく説明用）です。エンジンは `outputs:` を読まず、`produces[]` の名前を記録ディレクトリへ解決します。`outputs:` はパス契約ではなくドキュメントだ、と core 自身が明記しています。解説 docs に残る旧 `aidlc-docs/...` 形式の配置説明と食い違う場合は、実装を正としてください。
+なお、各ステージの `.md` が持つ `outputs:` フロントマターは、実行時には参照されません。エンジンは `outputs:` を読まず、`produces[]` の名前を記録ディレクトリへ解決します。`outputs:` はパス契約ではなくドキュメントだ、と core 自身が明記しています。解説ドキュメント（`docs/` 配下）に残る旧 `aidlc-docs/...` 形式の配置説明と食い違う場合は、実装を正としてください。
 
 ### 巡る順番
 
-設計4ステージを作業単位ごとに回すとき、既定の順番は**ステージ単位**です。機能設計を全作業単位ぶん済ませ、次に NFR 要件を全作業単位ぶん、というように進みます。
+設計4ステージを作業単位ごとに回すとき、既定の順番は**ステージ単位**です。機能設計を全作業単位ぶん済ませ、次に非機能要件を全作業単位ぶん、というように進みます。
 
-これを**作業単位単位**に切り替えられます。状態ファイルに `Construction Iteration: unit-major` を記録すると、1つの作業単位について設計4ステージを続けて仕上げ、それから次の作業単位へ移ります。デリバリー計画が「作業単位を先に固めるべき」と判断したときに記録され、人がいつでも切り替えられます。
+これを**作業単位単位**に切り替えられます。状態ファイルに `Construction Iteration: unit-major` を記録すると、1つの作業単位について設計4ステージを続けて仕上げ、それから次の作業単位へ移ります。デリバリー計画が「作業単位を先に固めるべき」と判断したときに記録されます。人があとから切り替えることもできます。
 
-承認ゲートの数と仕組みは変わりません。**変わるのは提示される時期**で、作業単位単位では設計がひととおり終わったところで4つのゲートが続けて現れます。フィールドを設定しなければ、挙動は従来と同一です。
+承認ゲートの数と仕組みは変わりません。**変わるのは提示される時期**で、作業単位単位では設計がひととおり終わったところで4つのゲートが続けて現れます。フィールドを設定しなければ、既定のステージ単位のままです。
 
 > 作業単位ごとに run-stage を発行するあいだ、ステージの承認ゲートは全作業単位が揃うまで抑止されます。最後の作業単位の成果物が出そろった再入で初めて、ステージ単一の承認ゲートが1回提示されます。早期承認の拒否を含むこの挙動は、別記事「[承認ゲート](https://qiita.com/takeshishimada/items/cd6827700443c9987fd7)」で扱います。
 
@@ -160,27 +160,27 @@ per-unit かどうかは、消費するステージではなく**所有者（生
 
 ## ここまでの連結と、その先の検証
 
-ここまで組んだ連なり（名指しの連結と生産者ディレクトリへの配置）は、フェーズの境界で「鎖」として検証されます。意図 → 要件 → ストーリー → 設計 → コード → テストが切れ目なくつながっているか。ただし、その**検証**自体は別記事「[フェーズ境界検証](https://qiita.com/takeshishimada/items/f2f4e426dd542c5b6765)」で扱います。本記事が集中したのは、鎖の**素材**、すなわち成果物がどう作られ、どこに置かれ、どう参照されるかでした。素材が正しく連結されているからこそ、境界で鎖として検証できます。
+ここまで組んだ連なり（名指しの連結と生産者ディレクトリへの配置）は、フェーズの境界で「鎖」として検証されます。意図 → 要件 → ストーリー → 設計 → コード → テストが切れ目なくつながっているか。ただし、その**検証**自体は別記事「[フェーズ境界検証](https://qiita.com/takeshishimada/items/f2f4e426dd542c5b6765)」で扱います。本記事が集中したのは、その**素材**、すなわち成果物がどう作られ、どこに置かれ、どう参照されるかでした。素材が正しく連結されているからこそ、境界での検証が成り立ちます。
 
-名前からパスへの解決は、すべて決定論的なエンジンの仕事で、コンダクター（LLM）に再導出させません。`aidlc-orchestrate.ts` のコメントいわく、パスの組み立ては教科書的なツールの仕事であり、それを LLM に回すのは設計の主旨そのものを反転させてしまう。本記事が扱ったのはその解決の**結果**＝何がどこに住むかの規約で、解決の機構そのもの（問い合わせ・指示・報告）は別記事「[進行の中核](https://qiita.com/takeshishimada/items/c3ac7c2223e5c7020d82)」で扱います。連結を保つ働きは保存のたびにもあり、上流成果物が本文で実際に参照されているかを助言として拾う仕組みは別記事「[センサー](https://qiita.com/takeshishimada/items/5f8dbb62f25c1a09a257)」で、成果物の作成・更新の記録は別記事「[状態と監査](https://qiita.com/takeshishimada/items/72234648bb4400cedf53)」で扱います。
+名前からパスへの解決は、すべて決定論的なエンジンの仕事で、コンダクター（LLM）に再導出させません。`aidlc-orchestrate.ts` のコメントは、パスの組み立ては教科書的なツールの仕事であり、それを LLM に回せば設計の趣旨そのものが反転する、と書いています。本記事が扱ったのはその解決の**結果**、つまり何がどこに住むかの規約で、解決の機構そのもの（問い合わせ・指示・報告）は別記事「[進行の中核](https://qiita.com/takeshishimada/items/c3ac7c2223e5c7020d82)」で扱います。連結を保つ働きは保存のたびにもあり、上流成果物が本文で実際に参照されているかを助言として拾う仕組みは別記事「[センサー](https://qiita.com/takeshishimada/items/5f8dbb62f25c1a09a257)」で、成果物の作成・更新の記録は別記事「[状態と監査](https://qiita.com/takeshishimada/items/72234648bb4400cedf53)」で扱います。
 
 ## 参照元
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/knowledge/aidlc-shared/ai-dlc-principles.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-shared/ai-dlc-principles.md) | 5フェーズの狙いと主要な成果。原則3「Traceable artifacts」 |
-| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-orchestrate.ts) | 成果物パスの解決。`resolveArtifactPath`（住所＝所有者の下）・`resolveConsumePath`（生産者は 1:1 で `[0]` 確定）・`isPerUnit`／`{unit-name}` の差し込み・`buildRunStageDirective`（発行時に名前→パス） |
-| [`core/tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-graph.ts) | グラフは成果物を語彙名で保持。`producersOf`／`consumersOf`（名前で引く）・`validateScope`（生産者のいない consumes をエラー化し 1:1 を守らせる） |
-| [`core/aidlc-common/protocols/stage-definition.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-definition.md) | 発行時に消費物を実在で二分する規約。`consumes_absent` の `expected` 真偽の定義、任意の入力が不在なら黙って落とす旨 |
-| [`core/tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-directive.ts) | 指示の凍結契約。`consumes_absent?` の型（`{path, expected}` の配列）とランタイム検証 |
-| [`core/aidlc-common/protocols/stage-protocol-recovery.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol-recovery.md) | 復旧の手順。生産者がスコープ外なら再実行という選択肢は無く、フォールバックで進め成果物の中身を発明しない分岐 |
-| [`core/aidlc-common/stages/inception/requirements-analysis.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/inception/requirements-analysis.md) | `produces`／`consumes`（`conditional_on: brownfield` 付き）の実例 |
-| [`core/aidlc-common/stages/ideation/intent-capture.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/ideation/intent-capture.md) | 鎖の起点。`consumes: []`（何も消費しない） |
-| [`core/aidlc-common/stages/construction/functional-design.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/construction/functional-design.md) | per-unit ステージ（`for_each: unit-of-work`）の実例。`optional_produces`（`frontend-components`）と `produces_kinds`（成果物ごとに効く種類の対応表）の実例でもある |
-| [`core/tools/aidlc-stage-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-stage-schema.ts) | フロントマターの検証。`optional_produces`／`produces_kinds` を含む省略可能フィールドの定義 |
-| [`core/tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-state.ts) | `Construction Iteration` の記録（`unit-major` のときだけ作業単位単位の巡回になり、それ以外は従来どおり） |
-| [`core/aidlc-common/stages/construction/code-generation.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/construction/code-generation.md) | per-unit の終端。`outputs:` が記録ディレクトリ相対で engine-resolved である旨を明記 |
-| [`core/sensors/aidlc-upstream-coverage.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/sensors/aidlc-upstream-coverage.md) | `consumes:` の上流成果物が出力本文で参照されているかを保存ごとに検査 |
+| [`core/knowledge/aidlc-shared/ai-dlc-principles.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/knowledge/aidlc-shared/ai-dlc-principles.md) | 5フェーズの狙いと主要な成果。原則3「Traceable artifacts」 |
+| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-orchestrate.ts) | 成果物パスの解決。`resolveArtifactPath`（住所は所有者の下）・`resolveConsumePath`（生産者は 1:1 で `[0]` 確定）・`isPerUnit`／`{unit-name}` の差し込み・`buildRunStageDirective`（発行時に名前→パス） |
+| [`core/tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-graph.ts) | グラフは成果物を語彙名で保持。`producersOf`／`consumersOf`（名前で引く）・`validateScope`（生産者のいない consumes をエラー化し 1:1 を守らせる） |
+| [`core/aidlc-common/protocols/stage-definition.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/protocols/stage-definition.md) | 発行時に消費物を実在で二分する規約。`consumes_absent` の `expected` 真偽の定義、任意の入力が不在なら黙って落とす旨 |
+| [`core/tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-directive.ts) | 指示の凍結契約。`consumes_absent?` の型（`{path, expected}` の配列）とランタイム検証 |
+| [`core/aidlc-common/protocols/stage-protocol-recovery.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/protocols/stage-protocol-recovery.md) | 復旧の手順。生産者がスコープ外なら再実行という選択肢は無く、フォールバックで進め成果物の中身を発明しない分岐 |
+| [`core/aidlc-common/stages/inception/requirements-analysis.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/stages/inception/requirements-analysis.md) | `produces`／`consumes`（`conditional_on: brownfield` 付き）の実例 |
+| [`core/aidlc-common/stages/ideation/intent-capture.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/stages/ideation/intent-capture.md) | 連結の起点。`consumes: []`（何も消費しない） |
+| [`core/aidlc-common/stages/construction/functional-design.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/stages/construction/functional-design.md) | per-unit ステージ（`for_each: unit-of-work`）の実例。`optional_produces`（`frontend-components`）と `produces_kinds`（成果物ごとに効く種類の対応表）の実例でもある |
+| [`core/tools/aidlc-stage-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-stage-schema.ts) | フロントマターの検証。`optional_produces`／`produces_kinds` を含む省略可能フィールドの定義 |
+| [`core/tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-state.ts) | `Construction Iteration` の記録（`unit-major` のときだけ作業単位単位の巡回になり、それ以外はステージ単位） |
+| [`core/aidlc-common/stages/construction/code-generation.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/stages/construction/code-generation.md) | per-unit の終端。`outputs:` が記録ディレクトリ相対で engine-resolved である旨を明記 |
+| [`core/sensors/aidlc-upstream-coverage.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/sensors/aidlc-upstream-coverage.md) | `consumes:` の上流成果物が出力本文で参照されているかを保存ごとに検査 |
 
 ---
 

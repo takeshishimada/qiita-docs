@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 4 日時点のコミット `c73ee984`（AIDLC_VERSION 2.5.37、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -128,16 +128,16 @@ flowchart TD
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/scopes/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/scopes)（9ファイル）| スコープ9種の定義。各フロントマター `description`（想定用途の一次表明）と EXECUTE/SKIP の散文。判断軸テーブルの源泉 |
-| [`core/aidlc-common/stages/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/aidlc-common/stages)（32ファイル）| 全32ステージ。各フロントマター `scopes:` の集計が EXECUTE 実数（32/32/25/22/13/10/8/8/7）の源泉 |
-| [`knowledge/aidlc-shared/ai-dlc-principles.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-shared/ai-dlc-principles.md) | 「Not every task requires every stage.」と、7つの中核原則（人が決める／深さの適応／追跡可能な成果物／複数役割の専門性／創発的振る舞いの禁止／仮定より質問／矛盾の検出） |
-| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | 初期化3工程を除く全ステージの承認ゲート、自律は推論しない（遵守チェックリスト項目6）、autonomous/gated、ウォーキングスケルトンとラダープロンプト、失敗時の halt-and-ask |
-| [`core/sensors/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/sensors) | センサー5種すべて助言（advisory・止めない）|
-| [`core/agents/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/agents)（14ファイル）| エージェント14体の `tier:` 宣言（judgment 9／balanced 2／templated 3）。core は素のモデル名を持たず、ビルドが各ハーネスのキーへ投影する |
-| [`dist/claude/.claude/settings.json`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/dist/claude/.claude/settings.json) | ハーネス固有の出荷設定。Fable・Opus・Sonnet のモデル ID に付く `[1m]`（Haiku は据え置き）、`AWS_REGION`、事前承認ツール |
-| [`tools/aidlc-version.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-version.ts) | `AIDLC_VERSION = "2.5.36"` |
-| [`tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-utility.ts) | 旧版検出時の archive-and-reinit 促しと「pre-1.0 no-migration policy」 |
-| [`tools/aidlc-lib.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-lib.ts) | 配布物5種（Claude Code・Kiro CLI・Kiro IDE・Codex CLI・opencode）。ハーネスのディレクトリは4種（Kiro の2つが `.kiro` を共有）|
+| [`core/scopes/`](https://github.com/awslabs/aidlc-workflows/tree/c73ee984/core/scopes)（9ファイル）| スコープ9種の定義。各フロントマター `description`（想定用途の一次表明）と EXECUTE/SKIP の散文。判断軸テーブルの正本 |
+| [`core/aidlc-common/stages/`](https://github.com/awslabs/aidlc-workflows/tree/c73ee984/core/aidlc-common/stages)（32ファイル）| 全32ステージ。各フロントマター `scopes:` の集計が EXECUTE 実数（32/32/25/22/13/10/8/8/7）の正本 |
+| [`knowledge/aidlc-shared/ai-dlc-principles.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/knowledge/aidlc-shared/ai-dlc-principles.md) | 「Not every task requires every stage.」と、7つの中核原則（人が決める／深さの適応／追跡可能な成果物／複数役割の専門性／創発的振る舞いの禁止／仮定より質問／矛盾の検出） |
+| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/protocols/stage-protocol.md) | 初期化3工程を除く全ステージの承認ゲート、自律は推論しない（遵守チェックリスト項目6）、autonomous/gated、ウォーキングスケルトンとラダープロンプト、失敗時の halt-and-ask |
+| [`core/sensors/`](https://github.com/awslabs/aidlc-workflows/tree/c73ee984/core/sensors) | センサー5種すべて助言（advisory・止めない）|
+| [`core/agents/`](https://github.com/awslabs/aidlc-workflows/tree/c73ee984/core/agents)（14ファイル）| エージェント14体の `tier:` 宣言（judgment 9／balanced 2／templated 3）。core は素のモデル名を持たず、ビルドが各ハーネスのキーへ投影する |
+| [`dist/claude/.claude/settings.json`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/dist/claude/.claude/settings.json) | ハーネス固有の出荷設定。Fable・Opus・Sonnet のモデル ID に付く `[1m]`（Haiku は据え置き）、`AWS_REGION`、事前承認ツール |
+| [`tools/aidlc-version.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-version.ts) | `AIDLC_VERSION = "2.5.37"` |
+| [`tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-utility.ts) | 旧版検出時の archive-and-reinit 促しと「pre-1.0 no-migration policy」 |
+| [`tools/aidlc-lib.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-lib.ts) | 配布物5種（Claude Code・Kiro CLI・Kiro IDE・Codex CLI・opencode）。ハーネスのディレクトリは4種（Kiro の2つが `.kiro` を共有）|
 
 ---
 

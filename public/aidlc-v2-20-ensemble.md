@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 4 日時点のコミット `c73ee984`（AIDLC_VERSION 2.5.37、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -51,7 +51,7 @@ AI-DLC v2 の各ステージには主担当（Lead）が置かれ、補佐（Sup
 | --- | --- | :-: |
 | `inline` | コンダクターが全員の役を自分の文脈で引き受ける | 28 |
 | `subagent` | ハブとスポーク。下書きを囲んで各自が検分する | 2 |
-| `pipeline` | 鎖。順に手を入れ、最後の段が仕上げる | 1 |
+| `pipeline` | 流れ作業。順に手を入れ、最後の段が仕上げる | 1 |
 | `mob` | 一つの部屋。一斉に意見を出し、異議は記録される | 1 |
 
 **32ステージのうち28は `inline`** です。支配的なのは、ステージ本体を1人で回す形です。残る4つは本体そのものを複数のエージェントで回します（`inline` でもレビュアーを宣言するステージでは、成果物ができたあとに別エージェントとしてレビュアーが起動します）。
@@ -68,9 +68,9 @@ AI-DLC v2 の各ステージには主担当（Lead）が置かれ、補佐（Sup
 
 ### pipeline
 
-鎖です。主担当を先頭に、補佐が宣言された順に1体ずつ動き、**各段が上流の作業をすべて見ます**。段が成果物を直接書き換えてもよく、直列なので衝突しません。最後の段が成果物を完成させます。
+流れ作業です。主担当を先頭に、補佐が宣言された順に1体ずつ動き、**各段が上流の作業をすべて見ます**。段が成果物を直接書き換えてもよく、直列なので衝突しません。最後の段が成果物を完成させます。
 
-リバースエンジニアリングがこの形です。デベロッパーが走査し、アーキテクトが統合して書く2段の鎖です。**順序そのものが意味を持つ**場合のかたちにあたります。
+リバースエンジニアリングがこの形です。デベロッパーが走査し、アーキテクトが統合して書く2段の流れ作業です。**順序そのものが意味を持つ**場合のかたちにあたります。
 
 ### mob
 
@@ -90,11 +90,11 @@ AI-DLC v2 の各ステージには主担当（Lead）が置かれ、補佐（Sup
 
 エージェントごとに別ファイルなので、並行して起動しても衝突しません。中身も決まっていて、1行目に書き手を示す印、続いて統合できる形で書いた内容、そして立場の表明（同意か異議か、それぞれ一行の理由付き）が並びます。
 
-**成果物を編集するのは主担当だけ**です（`pipeline` は例外で、鎖の各段が直接書き換えます）。実際の共同作業の場で、各人が自分のメモを書き、まとめ役が本文に反映する形に近いものです。
+**成果物を編集するのは主担当だけ**です（`pipeline` は例外で、流れ作業の各段が直接書き換えます）。実際の共同作業の場で、各人が自分のメモを書き、まとめ役が本文に反映する形に近いものです。
 
 そしてこのファイルは**ステージの記録の一部として残ります**。異議が返答テキストの中で流れて消えることはなく、ディスクに残ります。
 
-`pipeline` だけは contribution ファイルを求めません。鎖が成果物に加えた編集そのものが協働の記録になるからです。
+`pipeline` だけは contribution ファイルを求めません。各段が成果物に加えた編集そのものが協働の記録になるからです。
 
 ## 異議の仕分け
 
@@ -142,12 +142,12 @@ contribution ファイルには、もう一つの役割があります。**完�
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | §5 Multi-agent stages（ensemble topologies）。4トポロジーの定義、役割が不変であること、コンダクターがバスであること、contribution ファイルの構造、mob の異議の仕分け、並行できないハーネスでの約束、完了の証拠 |
-| [`core/tools/aidlc-stage-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-stage-schema.ts) | `mode` の許容値と、`pipeline`／`mob` が空でない `support_agents` を要求する検証。`agent-team` が予約である旨 |
-| [`core/aidlc-common/stages/inception/practices-discovery.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/inception/practices-discovery.md) | `subagent`（ハブとスポーク）の実例。主担当と3体の補佐 |
-| [`core/aidlc-common/stages/inception/reverse-engineering.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/inception/reverse-engineering.md) | `pipeline`（2段の鎖）の実例 |
-| [`core/aidlc-common/stages/inception/user-stories.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/inception/user-stories.md) | `mob` の実例。主担当と3体の補佐 |
-| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-orchestrate.ts) | 協働者の記録が欠けていると完了を拒む検査と、その無効化スイッチ `AIDLC_DISABLE_ENSEMBLE_EVIDENCE` |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/protocols/stage-protocol.md) | §5 Multi-agent stages（ensemble topologies）。4トポロジーの定義、役割が不変であること、コンダクターがバスであること、contribution ファイルの構造、mob の異議の仕分け、並行できないハーネスでの約束、完了の証拠 |
+| [`core/tools/aidlc-stage-schema.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-stage-schema.ts) | `mode` の許容値と、`pipeline`／`mob` が空でない `support_agents` を要求する検証。`agent-team` が予約である旨 |
+| [`core/aidlc-common/stages/inception/practices-discovery.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/stages/inception/practices-discovery.md) | `subagent`（ハブとスポーク）の実例。主担当と3体の補佐 |
+| [`core/aidlc-common/stages/inception/reverse-engineering.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/stages/inception/reverse-engineering.md) | `pipeline`（2段の流れ作業）の実例 |
+| [`core/aidlc-common/stages/inception/user-stories.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/stages/inception/user-stories.md) | `mob` の実例。主担当と3体の補佐 |
+| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-orchestrate.ts) | 協働者の記録が欠けていると完了を拒む検査と、その無効化スイッチ `AIDLC_DISABLE_ENSEMBLE_EVIDENCE` |
 
 ---
 

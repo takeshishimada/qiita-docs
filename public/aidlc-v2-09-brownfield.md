@@ -19,13 +19,13 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 4 日時点のコミット `c73ee984`（AIDLC_VERSION 2.5.37、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
 ## 概要
 
-ブラウンフィールドとは、すでに動いているコードベースを起点にする工程です。AI-DLC v2 はまっさらな新規開発（グリーンフィールド）だけでなく、既存システムへの機能追加や修正も正面から扱い、その分岐を状態ファイルの `Project Type` という1フィールドで決めます。ブラウンフィールドと判定されると、既存コードを理解し直すリバースエンジニアリングと、動いているものを壊さずに改変するためのセーフガードが、ワークフローへ自動で組み込まれます。
+ブラウンフィールドとは、すでに動いているコードベースを起点にする工程です。AI-DLC v2 は新規開発（グリーンフィールド）だけでなく、既存システムへの機能追加や修正も正面から扱い、その分岐を状態ファイルの `Project Type` フィールドで決めます。ブラウンフィールドと判定されると、既存コードを理解し直すリバースエンジニアリングと、動いているものを壊さずに改変するためのセーフガードが、ワークフローへ自動で組み込まれます。
 
 本記事では、この分岐がどう決まり、ブラウンフィールドのときに何が足されるのかを、リバースエンジニアリングとセーフガードという二本柱に沿って読み解きます。
 
@@ -38,13 +38,13 @@ agreed_posting_campaign_term: false
 1. **既存コードを理解し直す** — リバースエンジニアリング
 2. **既存コードを壊さず改変する** — 6つのセーフガード
 
-どちらも、新規開発には存在しない既存システム特有の前提です。
+どちらも、新規開発には存在しない既存システム特有の仕事です。
 
 ## 切り替えの決まり方
 
 ブラウンフィールドかどうかは、人が宣言するのではなく決定論的に判定されます。鍵を握るのは状態ファイルの `Project Type` フィールドで、`Greenfield` か `Brownfield` のいずれかが入ります。この1フィールドが、以降の分岐をすべて決めます。決まり方は3段階です。
 
-**ファイルスキャンで判定する。** 初期化フェーズの workspace-detection ステージがファイルシステムをスキャンし、分類します。ソースコードファイル（`.ts`／`.py`／`.java` …）、アプリのフレームワーク設定、アプリ依存を含むパッケージマニフェスト（非 dev 依存のある package.json、requirements.txt …）、`src/` や `app/` のようなソース置き場のディレクトリ——この**いずれか**があればブラウンフィールドです。README、`.gitignore`、LICENSE、CI 雛形、ハーネスディレクトリ（`.claude/` など）、ワークスペースの記録ツリー `aidlc/` は、あってもブラウンフィールドにはしません。判定基準は「アプリのコードがあるか」の一点です。
+**ファイルスキャンで判定する。** 初期化フェーズの workspace-detection ステージがファイルシステムをスキャンし、分類します。ソースコードファイル（`.ts`／`.py`／`.java` …）、アプリのフレームワーク設定、アプリ依存を含むパッケージマニフェスト（非 dev 依存のある package.json、requirements.txt …）、`src/` や `app/` のようなソース置き場のディレクトリ。この**いずれか**があればブラウンフィールドです。README、`.gitignore`、LICENSE、CI 雛形、ハーネスディレクトリ（`.claude/` など）、ワークスペースの記録ツリー `aidlc/` は、あってもブラウンフィールドにはしません。判定基準は「アプリのコードがあるか」の一点です。
 
 見に行くのは直下と、`src/` や `app/` といった既知のソース置き場です。**それでも終わりではありません**。どの手がかりも無いときは、**サブディレクトリを1階層だけ見に行きます**。ソースが `backend/` のような入れ子に置かれたプロジェクトを、空だと誤判定しないためです。見つかった場所は `Nested Root` として監査に残ります。
 
@@ -52,7 +52,7 @@ agreed_posting_campaign_term: false
 
 **判定結果でルーティングする。** state-init ステージが判定を受けて、最初の構想ステージを分岐させます。ブラウンフィールドなら reverse-engineering から始め、グリーンフィールドなら reverse-engineering をスキップして requirements-analysis から始めます。
 
-**エンジンが消費を絞り込む。** 下流ステージが読み込む成果物（consumes）には、`conditional_on: brownfield` という印が付いたものがあります。エンジンは状態ファイルの `Project Type` と一致する印のエントリだけを取り込みます。つまり「ブラウンフィールドのときだけ既存理解の成果物を読む」が、プロンプトではなく決定論的なツールで保証されます。
+**エンジンが消費を絞り込む。** 下流ステージが読み込む成果物（consumes）には、`conditional_on: brownfield` という条件が付いたものがあります。エンジンは状態ファイルの `Project Type` と一致する条件のエントリだけを取り込みます。つまり「ブラウンフィールドのときだけ既存理解の成果物を読む」が、プロンプトではなく決定論的なツールで保証されます。
 
 ```mermaid
 flowchart TD
@@ -72,7 +72,7 @@ flowchart TD
 
 ### 作り直すか、使い回すかを決める
 
-このステージの定義ファイルは、冒頭で実行条件を `execution: CONDITIONAL` と宣言しています。走るのはブラウンフィールドのときだけで、グリーンフィールドではスキップします。そして条件はもう1つ、**再実行のときの振る舞い**まで書いています。手元の理解の鮮度を確かめ、確認できたものは人の選択で使い回してよく、それ以外は読み直す、と。
+このステージの定義ファイルは、冒頭で実行条件を `execution: CONDITIONAL` と宣言しています。走るのはブラウンフィールドのときだけで、グリーンフィールドではスキップします。そして条件はもう1つ、**再実行のときの振る舞い**まで書いています。手元の理解の鮮度を確かめ、確認できたものは人の選択で使い回してよく、それ以外は読み直す、というものです。
 
 この最後の1つが、このステージの勘所です。既存コードは人の手で変わり続けるため、古い理解のまま設計を進めると判断を誤ります。かといって、読み直すたびに前の理解を捨ててよいわけでもありません。既にある理解は、あとで見るとおり、この一度の作業だけのものではないからです。
 
@@ -96,7 +96,7 @@ flowchart TD
 | 8 | code-quality-assessment | テストカバレッジ・lint・CI／CD・文書の質・技術的負債 |
 | 9 | reverse-engineering-timestamp | いつ実行したか（日付・コミットハッシュ）と、どこを読んだか（機械可読な解析範囲）|
 
-9番目の timestamp は、中身の知識ではなく「この理解はいつ・どこまでのものか」を記録するメタ成果物です。末尾には、決まった形式で解析範囲が書かれます。深く読んだディレクトリとファイル、把握したコンポーネント名、流し読みにとどめた範囲、そしてその範囲の内容から計算した指紋です。**この成果物だけは、人ではなく次回の自分が読む**もので、先ほどの判定はこの記録を読み、指紋を計算し直して突き合わせます。
+9番目の timestamp は、中身の知識ではなく「この理解はいつ・どこまでのものか」を記録するメタ成果物です。末尾には、決まった形式で解析範囲が書かれます。深く読んだディレクトリとファイル、把握したコンポーネント名、流し読みにとどめた範囲、そしてその範囲の内容から計算した指紋です。**この成果物だけは、人ではなく次回の実行が読む**もので、先ほどの判定はこの記録を読み、指紋を計算し直して突き合わせます。
 
 そのため、ここに書く範囲は「読もうとした範囲」ではなく「実際に深く読んだ範囲」でなければなりません。リポジトリ全体を深く読んだときだけ `full` を名乗れます。コンポーネント名は component-inventory の見出しと一字一句そろえます。判定が文字列として突き合わせるからです。
 
@@ -110,7 +110,7 @@ reverse-engineering が工程カタログ上のどこに位置するかは別記
 
 ## ② 既存コード改変のセーフガード
 
-既存システムへの改変は「動いているものを壊す」リスクと隣り合わせです。AI-DLC v2 は、既存コードや基盤を変更するステージに対して**6つのセーフガード**を定義しています。権威ある定義は `brownfield.md` の Safeguard Matrix にあり、各ステージ本文とナレッジが運用面の詳細を補います。
+既存システムへの改変は「動いているものを壊す」リスクと隣り合わせです。AI-DLC v2 は、既存コードや基盤を変更するステージに対して**6つのセーフガード**を定義しています。正本は `brownfield.md` の Safeguard Matrix で、各ステージ本文とナレッジが運用面の詳細を補います。
 
 ### セーフガードのマトリクス
 
@@ -123,7 +123,7 @@ reverse-engineering が工程カタログ上のどこに位置するかは別記
 | Impact Analysis | 影響を受ける API・部品・依存を文書化する | reverse-engineering（2.1）と code-generation（3.5）|
 | Rollback Plan | 必要なら変更をどう巻き戻すかを文書化する | デプロイ前（deployment-execution, 4.3）|
 
-このマトリクスは、6つのセーフガードを工程のタイムライン上に配置しています。理解の段階（2.1）で影響範囲を文書化し、コード生成の前（3.5）で爆発半径とテスト基準を確認し、生成の後（3.6）で回帰がないか確かめ、デプロイ前（4.3）で巻き戻し手順を用意する。変更の前・最中・後・デプロイ前のそれぞれに確認点（チェックポイント）を置く設計です。
+このマトリクスは、6つのセーフガードを工程のタイムライン上に配置しています。理解の段階（2.1）で影響範囲を文書化し、コード生成の前（3.5）で爆発半径とテスト基準を確認し、生成の後（3.6）で回帰がないか確かめ、デプロイ前（4.3）で巻き戻し手順を用意する。変更の前・最中・後・デプロイ前のそれぞれに確認の場を置く設計です。
 
 ### 手順テンプレート
 
@@ -146,23 +146,23 @@ flowchart LR
     SG --> OK[既存システムを壊さず<br/>機能を足す／直す]
 ```
 
-新規開発が「ゼロから作る」だけなのに対し、既存システムでは理解し直し（①）と壊さず改変（②）が前段に入ります。`Project Type` がブラウンフィールドと判定された瞬間に、この二本柱が、AI-DLC v2 のブラウンフィールド対応として自動で工程に組み込まれます。
+新規開発にはこの前段がありません。既存システムでは、理解し直し（①）と壊さず改変（②）が先に入ります。`Project Type` がブラウンフィールドと判定された瞬間に、この二本柱が、AI-DLC v2 のブラウンフィールド対応として自動で工程に組み込まれます。
 
 ## 参照元
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/knowledge/aidlc-shared/brownfield.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-shared/brownfield.md) | 6セーフガードの権威ある定義（Safeguard Matrix・Blast Radius テンプレート・Test Baseline プロトコル）|
-| [`aidlc-common/stages/inception/reverse-engineering.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/inception/reverse-engineering.md) | リバースエンジニアリングステージ。CONDITIONAL 実行条件・lead/support・9成果物。再実行時にまず鮮度を判定し、`CURRENT` なら人の選択で使い回せること。書き出す直前の範囲比較と、狭いときの警告 |
-| [`core/knowledge/aidlc-developer-agent/re-artifacts.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-developer-agent/re-artifacts.md) | RE 成果物のナレッジ。9成果物の定義とスキャン／統合テンプレート。スキャン結果に深く読んだ範囲と流し読みの範囲を分けて書かせること、timestamp 末尾に置く解析範囲の書式（`full`/`partial`・パス・コンポーネント名・指紋）とその記入規律 |
-| [`core/knowledge/aidlc-shared/state-template.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-shared/state-template.md) | 状態ファイルの雛形。`Project Type`（Greenfield/Brownfield）フィールド |
-| [`aidlc-common/stages/initialization/workspace-detection.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/initialization/workspace-detection.md) | greenfield／brownfield の決定論的な判定基準 |
-| [`aidlc-common/stages/initialization/state-init.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/initialization/state-init.md) | プロジェクトタイプによる最初の構想ステージのルーティング |
-| [`aidlc-common/stages/inception/practices-discovery.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/inception/practices-discovery.md) | 下流が RE の6成果物を `conditional_on: brownfield` で消費する例 |
-| [`aidlc-common/stages/construction/code-generation.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/stages/construction/code-generation.md) | ブラウンフィールドはその場での改変（in-place）・重複コピー禁止 |
-| [`core/agents/aidlc-architecture-reviewer-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/agents/aidlc-architecture-reviewer-agent.md) | Blast Radius が設計レビュアーのコア質問にも現れる点 |
-| [`core/tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-utility.ts) | 鮮度を判定する読み取り専用の `codekb-scope-diff`。記録された解析範囲をもとに5つの判定を返すこと（記録そのものが無い・範囲の記録が読めないの2つは指紋の計算前に返る）、`--compare` が今回の範囲と前回の範囲を比べて失われる分を名指しすること、判定は拒否ではなく出力に載せて正常終了すること（引数が足りない・比較先が無いときだけエラー終了） |
-| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-orchestrate.ts) | エンジンが `conditional_on: brownfield/greenfield` の消費物を Project Type で絞り込む（`resolveConsumes`） |
+| [`core/knowledge/aidlc-shared/brownfield.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/knowledge/aidlc-shared/brownfield.md) | 6セーフガードの正本（Safeguard Matrix・Blast Radius テンプレート・Test Baseline プロトコル）|
+| [`aidlc-common/stages/inception/reverse-engineering.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/stages/inception/reverse-engineering.md) | リバースエンジニアリングステージ。CONDITIONAL 実行条件・lead/support・9成果物。再実行時にまず鮮度を判定し、確認できたときだけ人の選択で使い回せること。書き出す直前の範囲比較と、狭いときの警告 |
+| [`core/knowledge/aidlc-developer-agent/re-artifacts.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/knowledge/aidlc-developer-agent/re-artifacts.md) | RE 成果物のナレッジ。9成果物の定義とスキャン／統合テンプレート。スキャン結果に深く読んだ範囲と流し読みの範囲を分けて書かせること、timestamp 末尾に置く解析範囲の書式（`full`/`partial`・パス・コンポーネント名・指紋）とその記入規律 |
+| [`core/knowledge/aidlc-shared/state-template.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/knowledge/aidlc-shared/state-template.md) | 状態ファイルの雛形。`Project Type`（Greenfield/Brownfield）フィールド |
+| [`aidlc-common/stages/initialization/workspace-detection.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/stages/initialization/workspace-detection.md) | greenfield／brownfield の決定論的な判定基準 |
+| [`aidlc-common/stages/initialization/state-init.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/stages/initialization/state-init.md) | プロジェクトタイプによる最初の構想ステージのルーティング |
+| [`aidlc-common/stages/inception/practices-discovery.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/stages/inception/practices-discovery.md) | 下流の一例。このステージが RE の6成果物を `conditional_on: brownfield` で消費する |
+| [`aidlc-common/stages/construction/code-generation.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/stages/construction/code-generation.md) | ブラウンフィールドはその場での改変（in-place）・重複コピー禁止 |
+| [`core/agents/aidlc-architecture-reviewer-agent.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/agents/aidlc-architecture-reviewer-agent.md) | Blast Radius が設計レビュアーのコア質問にも現れる点 |
+| [`core/tools/aidlc-utility.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-utility.ts) | 鮮度を判定する読み取り専用の `codekb-scope-diff`。記録された解析範囲をもとに5つの判定を返すこと（記録そのものが無い・範囲の記録が読めないの2つは指紋の計算前に返る）、`--compare` が今回の範囲と前回の範囲を比べて失われる分を名指しすること、判定は拒否ではなく出力に載せて正常終了すること（引数が足りない・比較先が無いときだけエラー終了） |
+| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-orchestrate.ts) | エンジンが `conditional_on: brownfield/greenfield` の消費物を Project Type で絞り込む（`resolveConsumes`） |
 
 ---
 
