@@ -6,7 +6,7 @@ tags:
   - AIDLC
   - ClaudeCode
 private: false
-updated_at: '2026-07-30T10:38:38+09:00'
+updated_at: '2026-08-04T17:17:34+09:00'
 id: d179ca1bde4b047adf6f
 organization_url_name: null
 slide: false

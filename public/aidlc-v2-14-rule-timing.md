@@ -6,7 +6,7 @@ tags:
   - AIDLC
   - AI-DLC
 private: false
-updated_at: '2026-07-30T10:24:55+09:00'
+updated_at: '2026-08-04T17:14:40+09:00'
 id: 33f3b2b401d4d3c1c266
 organization_url_name: null
 slide: false
