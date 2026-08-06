@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 4 日時点のコミット `c73ee984`（AIDLC_VERSION 2.5.37、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -48,15 +48,15 @@ AI エージェントに作業を任せると、仕様の曖昧さを埋めた�
 | Tradeoffs | 複数の選択肢から一つ選んだ | 消費側が CRUD のみなので REST を選択 |
 | Open questions | まだ答えが出ていない | 保持期間をコンプライアンスに要確認 |
 
-学習ログはコンダクターが自分で書く数少ないファイルです。状態や監査ログがツール任せで積み上がるのに対し、ここだけはコンダクターが中身を書きます。誰がどのファイルを書くかという書き分けは、別記事「[状態と監査](https://qiita.com/takeshishimada/items/72234648bb4400cedf53)」で扱います。
+状態や監査ログがツール任せで積み上がるのに対し、学習ログはコンダクターが自分で中身を書きます。誰がどのファイルを書くかという書き分けは、別記事「[状態と監査](https://qiita.com/takeshishimada/items/72234648bb4400cedf53)」で扱います。
 
 ## 学習ゲートの手順
 
 承認ゲートを持つステージでは、その直前に学習ゲートが走ります。自動で進む初期化のステージと、単独で走らせたステージには承認ゲートが無いので、学習ゲートも走りません。作業単位ごとに回るステージでは、最後の1回にまとめられます。次の順で進みます。
 
-1. **候補の抽出** — ツール（`aidlc-learnings.ts surface`）が学習ログを読み、Interpretations・Deviations・Tradeoffs の各エントリを候補として原文のまま提示します。Open questions は未解決の調べ物なので、候補にはなりません。多くのワークフローでは残すべき候補が出ないのが普通です。
+1. **候補の抽出** — ツール（`aidlc-learnings.ts surface`）が学習ログを読み、Interpretations・Deviations・Tradeoffs の各エントリを候補として原文のまま提示します。Open questions は未解決の調べ物なので、候補にはなりません。残すべき候補が1件も出ないワークフローも珍しくありません。
 2. **選択** — 人が候補ごとに残すか捨てるかを選び、必要なら文言を直します。保存先の範囲（後述の project／team）もここで選びます。あわせて、自由記述で「次に活かすことはありますか」と聞かれます。**ここが学習のもう一つの入口**で、ログに残っていない気づきを人が直接足せます。
-3. **矛盾検査** — 残すと決めたルール候補について、コンダクターが組織ルール（`org.md`）の同じ話題の節と1行ずつ照合します（`conflict-check`）。矛盾があれば、その組織ルールを示したうえで、人が書き直す・取り下げる・人の判断で押し通す（`escalate`）のいずれかを選びます。押し通したものも保存へ進みます。センサー候補には照合の対象がないので、この検査を経ずに進みます。
+3. **矛盾検査** — 残すと決めたルール候補について、コンダクターが組織ルール（`org.md`）の同じ話題の節と1行ずつ照合します（`conflict-check`）。矛盾があれば、その組織ルールを示したうえで、人が書き直す・取り下げる・人の判断で押し通す（`escalate`）のいずれかを選びます。押し通した場合も保存へ進みます。センサー候補には照合の対象がないので、この検査を経ずに進みます。
 4. **保存** — ツール（`aidlc-learnings.ts persist`）が、矛盾のない候補を保存します。書き込みはすべてロックの中でツールを通して行われ、`RULE_LEARNED` などの監査イベントが記録されます。同じ候補の二重書き込みは自動で防がれます。
 
 学習ゲートは助言で、承認ゲートの提示を妨げません。候補がゼロでも「次に活かすことはありますか」という問いかけ自体は必ず出ます。省略も自己判断での打ち切りもできません。
@@ -65,7 +65,7 @@ AI エージェントに作業を任せると、仕様の曖昧さを埋めた�
 
 確定した学習は **practice** として扱われます。ルールファイル `memory/project.md`（または `memory/team.md`）の話題見出しの下に、一行の practice として追記されます。
 
-行の形は `- 本文 (learned YYYY-MM-DD)` です。話題見出しは内容に合わせてコンダクターが振り分けます。一般的な是正は既定の `## Corrections`、テスト方針なら `## Testing Posture`、禁則なら `## Forbidden` です。人が指定するのは元の4カテゴリのどれかだけで、保存先の見出しは振り分けに任せます。
+行の形は `- 本文 (learned YYYY-MM-DD)` です。話題見出しは内容に合わせてコンダクターが振り分けます。一般的な是正は既定の `## Corrections`、テスト方針なら `## Testing Posture`、禁止事項なら `## Forbidden` です。人が指定するのは元の4カテゴリのどれかだけで、保存先の見出しは振り分けに任せます。
 
 重要なのは、この保存先がルールを読む側と同じファイルだという点です。学習を書き込む側と、次回ステージがルールを読み込む側が分かれていません。だから学習はそのまま次回の前提に積み上がります。
 
@@ -141,11 +141,11 @@ flowchart TD
 
 | ファイル | 内容 |
 | --- | --- |
-| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | §13 学習ゲートの全手順・practice 保存・two-write install |
-| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/conductor.md) | コンダクターの行動規範。`memory.md` への記録責務 |
-| [`tools/aidlc-learnings.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-learnings.ts) | 学習ループツール実装（`surface`／`persist` サブコマンド） |
-| [`knowledge/aidlc-shared/memory-template.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-shared/memory-template.md) | `memory.md` のテンプレート。4カテゴリの定義 |
-| [`core/memory/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/memory)（`org.md`／`project.md`／`team.md`） | 矛盾検査の対象と practice の保存先（project／team） |
+| [`aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/protocols/stage-protocol.md) | §13 学習ゲートの全手順・practice 保存・two-write install |
+| [`aidlc-common/conductor.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/conductor.md) | コンダクターの行動規範。`memory.md` への記録責務 |
+| [`tools/aidlc-learnings.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-learnings.ts) | 学習ループツール実装（`surface`／`persist` サブコマンド） |
+| [`knowledge/aidlc-shared/memory-template.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/knowledge/aidlc-shared/memory-template.md) | `memory.md` のテンプレート。4カテゴリの定義 |
+| [`core/memory/`](https://github.com/awslabs/aidlc-workflows/tree/c73ee984/core/memory)（`org.md`／`project.md`／`team.md`） | 矛盾検査の対象と practice の保存先（project／team） |
 
 ---
 

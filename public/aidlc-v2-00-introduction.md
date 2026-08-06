@@ -19,10 +19,10 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 4 日時点のコミット `c73ee984`（AIDLC_VERSION 2.5.37、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 :::note info
-**参照版を変更しました（2026 年 8 月 4 日）** — 本連載の基準を **2.5.33**（コミット `9c9201b8`）から **2.5.36**（コミット `046a9a6c`）へ切り替えました。
+**参照版を変更しました（2026 年 8 月 4 日）** — 本連載の基準を **2.5.36**（コミット `046a9a6c`）から **2.5.37**（コミット `c73ee984`）へ切り替えました。
 :::
 
 ---
@@ -51,27 +51,27 @@ AI にコードを書かせること自体は、もう特別ではありませ�
 
 事実の根拠は、一次資料である `core/` のソースコードです。解説ドキュメント（`docs/` 配下）は実装と食い違うことがあるため、使いません。バージョン履歴（`CHANGELOG.md`）も、その版の時点の記録なので参照範囲には入れません。数値や担当は実装で裏を取り、確証が持てないものは推測と区別して正直に示します。
 
-参照するのは 2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36）です。版番号ではなく日付とコミットで固定しているのは、この実装が短い周期で更新され続けていて、版番号だけでは指し先が一意に決まらないからです。たとえばエージェントの数や監査イベントの数のように、時点によって動く数値があります。引用する際は時点を添え、最新の状態は公式リポジトリで確認できるようにしています。
+参照するのは 2026 年 8 月 4 日時点のコミット `c73ee984`（AIDLC_VERSION 2.5.37）です。版番号ではなく日付とコミットで固定しているのは、この実装が短い周期で更新され続けていて、版番号だけでは指し先が一意に決まらないからです。たとえばエージェントの数や監査イベントの数のように、更新のたびに動く数値があります。引用するときは参照したコミットを添え、最新の状態は公式リポジトリで確認できるようにしています。
 
-## 記事の歩き方
+## この連載の読み方
 
 番号順に読むと、設計の動機から全体像、開発の工程、進行の仕組み、規律と検証、学習、状態の管理、そして運用と導入判断へと、関心の自然な流れでたどれます。気になるテーマから拾い読みもできます。各記事は独立して読めるように書き、深掘りは相互リンクでつなぎます。
 
 | # | 記事 | この記事で分かること |
 | --- | --- | --- |
-| 01 | [設計思想](https://qiita.com/takeshishimada/items/4c8c4ae93b4184588ee6) | なぜこの形なのか。承認ゲート・決定論的なエンジン・学習ループという三つの柱 |
-| 02 | [概念マップ](https://qiita.com/takeshishimada/items/6391a320609276d0cfb6) | 全体像を5つの観点で見渡す索引 |
+| 01 | [設計思想](https://qiita.com/takeshishimada/items/4c8c4ae93b4184588ee6) | 承認ゲート・決定論的なエンジン・学習ループという三つの柱 |
+| 02 | [概念マップ](https://qiita.com/takeshishimada/items/6391a320609276d0cfb6) | 5つの観点で見る全体像 |
 | 03 | [工程とエージェント](https://qiita.com/takeshishimada/items/418d7b9e17192e8add85) | 5フェーズ32ステージと、それを担う14体のエージェント |
-| 04 | [進行の中核](https://qiita.com/takeshishimada/items/c3ac7c2223e5c7020d82) | 決定論的なエンジンと、それを実行するコンダクターの分離。指示で回る制御ループ |
-| 05 | [スコープ](https://qiita.com/takeshishimada/items/c232fb2e994e7b567a5c) | 9種のスコープが、どのステージを通すかを切り替える |
+| 04 | [進行の中核](https://qiita.com/takeshishimada/items/c3ac7c2223e5c7020d82) | 決定論的なエンジンと、それを実行するコンダクターの分離。問い合わせと報告を往復する制御ループ |
+| 05 | [スコープ](https://qiita.com/takeshishimada/items/c232fb2e994e7b567a5c) | 9種のスコープが、実行するステージを絞り込む |
 | 06 | [深さ](https://qiita.com/takeshishimada/items/f2246466b9e3bdef570b) | 同じ工程をどこまで作り込むか、3段階の深さ |
-| 07 | [成果物の流れ](https://qiita.com/takeshishimada/items/46feb553f907f9eedd14) | intent からコードへ、成果物が詳細化されていく連結 |
+| 07 | [成果物の流れ](https://qiita.com/takeshishimada/items/46feb553f907f9eedd14) | intent からコードへ、成果物が段階的に詳しくなっていく流れ |
 | 08 | [ウォーキングスケルトン](https://qiita.com/takeshishimada/items/7a24030b9d8905f379ed) | 最初の Bolt（構築の実行単位）で端から端まで通し、土台を先に確かめる |
 | 09 | [ブラウンフィールド](https://qiita.com/takeshishimada/items/0a22742c273797429aee) | 既存コードベースを起点にする工程と安全策 |
 | 10 | [承認ゲート](https://qiita.com/takeshishimada/items/cd6827700443c9987fd7) | 成果物の中身を見て止められるのはここだけ。差し戻しと「現状で承認」 |
-| 11 | [センサー](https://qiita.com/takeshishimada/items/5f8dbb62f25c1a09a257) | 保存ごとに自動で走る、止めない助言チェック |
-| 12 | [レビュアー](https://qiita.com/takeshishimada/items/624d83e946e86e4b1553) | 専任2体が READY／NOT-READY で添える、非停止の品質判定 |
-| 13 | [フェーズ境界検証](https://qiita.com/takeshishimada/items/f2f4e426dd542c5b6765) | フェーズの継ぎ目で、上流から下流への鎖をたどる |
+| 11 | [センサー](https://qiita.com/takeshishimada/items/5f8dbb62f25c1a09a257) | 保存のたびに自動で走る、進行を止めない助言チェック |
+| 12 | [レビュアー](https://qiita.com/takeshishimada/items/624d83e946e86e4b1553) | 専任2体が READY／NOT-READY を返す、進行を止めない品質判定 |
+| 13 | [フェーズ境界検証](https://qiita.com/takeshishimada/items/f2f4e426dd542c5b6765) | フェーズの継ぎ目で、上流から下流へのつながり（トレーサビリティ）を点検する |
 | 14 | [ルールとナレッジ](https://qiita.com/takeshishimada/items/33f3b2b401d4d3c1c266) | 守るルール（push）と参照するナレッジ（pull）の違い |
 | 15 | [学習ループ](https://qiita.com/takeshishimada/items/dd7f3d034ee2c137cff5) | 一度の是正を恒久ルールに変え、以後の判断に効かせる |
 | 16 | [状態と監査](https://qiita.com/takeshishimada/items/72234648bb4400cedf53) | 進捗を記録する状態ファイルと、追記専用の監査ログ |
@@ -88,7 +88,7 @@ AI にコードを書かせること自体は、もう特別ではありませ�
 
 | ファイル | 内容 |
 | --- | --- |
-| [`awslabs/aidlc-workflows`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c) | 一次資料のリポジトリ（本連載は `core/` の Claude Code 実装を対象に、2026 年 8 月 3 日時点のコミットを参照） |
+| [`awslabs/aidlc-workflows`](https://github.com/awslabs/aidlc-workflows/tree/c73ee984) | 一次資料のリポジトリ（本連載は `core/` の Claude Code 実装を対象に、2026 年 8 月 4 日時点のコミットを参照） |
 
 ---
 

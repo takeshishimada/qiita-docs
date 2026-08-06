@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 4 日時点のコミット `c73ee984`（AIDLC_VERSION 2.5.37、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -126,9 +126,9 @@ Kiro では**どの階層もモデルを指定しません**。指定したモ�
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/tools/aidlc-tiers.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-tiers.ts) | 階層の定義と投影。3階層が何を区別するか、Claude Code／Codex／Kiro それぞれのキーへの翻訳、「下げるだけ、上げない」の原則、名前が仕事を表しダイヤルを表さない理由、上限の指定 |
-| [`core/agents/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/agents)（14ファイル） | 各エージェントの `tier:` 宣言。素のモデル名は持たない |
-| [`core/memory/org.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/memory/org.md) | 上限を書ける層のひとつ |
+| [`core/tools/aidlc-tiers.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-tiers.ts) | 階層の定義と投影。3階層が何を区別するか、Claude Code／Codex／Kiro それぞれのキーへの翻訳、「下げるだけ、上げない」の原則、名前が仕事を表しダイヤルを表さない理由、上限の指定 |
+| [`core/agents/`](https://github.com/awslabs/aidlc-workflows/tree/c73ee984/core/agents)（14ファイル） | 各エージェントの `tier:` 宣言。素のモデル名は持たない |
+| [`core/memory/org.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/memory/org.md) | 上限を書ける層のひとつ |
 
 ---
 

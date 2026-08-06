@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 4 日時点のコミット `c73ee984`（AIDLC_VERSION 2.5.37、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -39,7 +39,7 @@ AI-DLC v2 のワークフローは、ひとつの会話（セッション）の�
 
 ## 状態ファイル
 
-状態は `<record>/aidlc-state.md` というマークダウン1枚です（`<record>` ＝ アクティブ intent の記録ディレクトリ `aidlc/spaces/<space>/intents/<YYMMDD>-<label>/`。単一チームなら `spaces/default/`）。報告のたびにツールが上書きするので、履歴は持ちません。常に「今この瞬間」だけが書かれています。ファイルとして残るので、会話をまたいでも、別の会話からでも、ここを読めば現在地が分かります。
+状態は `<record>/aidlc-state.md` というマークダウン1枚です（`<record>` はアクティブ intent の記録ディレクトリ `aidlc/spaces/<space>/intents/<YYMMDD>-<label>/`。単一チームなら `spaces/default/`）。報告のたびにツールが上書きするので、履歴は持ちません。常に「今この瞬間」だけが書かれています。ファイルとして残るので、会話をまたいでも、別の会話からでも、ここを読めば現在地が分かります。
 
 先頭の Project Information 節には **State Version: 7** が記されています。これは状態ファイルの **スキーマのバージョン番号** で、節やフィールドの構成が変わるたびに上がります。古い版の状態ファイルを新しいツールが読むときの食い違いを検知するための目印です。
 
@@ -64,7 +64,7 @@ AI-DLC v2 のワークフローは、ひとつの会話（セッション）の�
 | `[ ]` | 未着手 |
 | `[-]` | 進行中（現在のステージ、まだ承認前） |
 | `[?]` | 承認待ち（ゲートが開いている） |
-| `[R]` | 改訂中（人が差し戻した） |
+| `[R]` | 差し戻し中（人がやり直しを指示した） |
 | `[x]` | 完了（人が承認した） |
 | `[S]` | スキップ（`skip` サブコマンド、`--stage`/`--phase` ジャンプによる迂回。スコープ除外は `[ ]` のまま行末に `— SKIP`） |
 
@@ -80,7 +80,7 @@ AI-DLC v2 のワークフローは、ひとつの会話（セッション）の�
 
 監査ログは記録ディレクトリ配下に住みます。状態ファイルが「上書きされる現在地」なら、こちらは正反対で、**追記専用・改変禁止** の履歴です。一度書いたエントリは決して書き換えず、消さず、ただ末尾に積み上げます。人の判断（承認のひと言など）は要約せず逐語で残します。後から「いつ・何が起き、なぜそう決めたか」をたどり直すための記録だからです。
 
-監査ログは **クローン別のシャード** `<record>/audit/<host>-<clone-id>.md` に分かれます（clone-id は gitignore された `aidlc/.aidlc-clone-id` の安定12桁トークン）。複数のクローンや worktree が並行して書いても履歴（trail）が衝突（merge-conflict）しないための設計です。読む側は `<record>/audit/*.md` を glob し、**タイムスタンプで時系列マージ** します（ファイルの連結順＝新しさ、ではない点に注意）。シャード自体は **版管理（コミット対象）** で、gitignore されるのは per-user カーソルや clone-id・runtime-graph など機械固有のものだけです。なお並行書き込みは intent 単位の監査ロックで直列化されますが、stale-lock 回収には実装コメントが認める残存レースがあります（別記事「[限界と注意点](https://qiita.com/takeshishimada/items/7b7582e2dfac5d942eda)」で扱います）。
+監査ログは **クローン別のシャード** `<record>/audit/<host>-<clone-id>.md` に分かれます（clone-id は gitignore された `aidlc/.aidlc-clone-id` の安定12桁トークン）。複数のクローンや worktree が並行して書いても履歴（trail）が衝突（merge-conflict）しないための設計です。読む側は `<record>/audit/*.md` を glob し、**タイムスタンプで時系列マージ** します（ファイルを並べた順が新しさの順ではない点に注意）。シャード自体は **版管理（コミット対象）** で、gitignore されるのは per-user カーソルや clone-id・runtime-graph など機械固有のものだけです。なお並行書き込みは intent 単位の監査ロックで直列化されますが、stale-lock 回収には実装コメントが認める残存レースがあります（別記事「[限界と注意点](https://qiita.com/takeshishimada/items/7b7582e2dfac5d942eda)」で扱います）。
 
 イベントには命名規約があります。すべて `SUBJECT_PAST_VERB`、つまり過去形で「何が起きたか」に答える形（`STAGE_COMPLETED`、`GATE_APPROVED` など）。そして登録済みのイベントは **74種、19カテゴリ** に整理されています（`WORKFLOW_PARKED`/`HUMAN_TURN`/`RECOMPOSED` などを含む）。
 
@@ -125,7 +125,7 @@ state も audit も、**コンダクター（進行役の AI）は直接手を�
 
 監査の各イベントには「発火元（emitter）」が定められていて、ツール発火とフック発火が混在します。たとえば `STAGE_COMPLETED` は `aidlc-state.ts` の `approve`/`advance` から、`ARTIFACT_CREATED` はフックから、というように、**誰が発火させるかが固定** されています。
 
-コンダクターが触らない、という設計の例外がひとつだけあります。`memory.md`（学習ログ）です。state と audit がツール任せなのに対し、memory.md だけはコンダクターが判断を手で書き留める唯一のファイルです。この対比は別記事「[学習ループ](https://qiita.com/takeshishimada/items/dd7f3d034ee2c137cff5)」で扱います。
+コンダクターが触らない、という設計の例外がひとつだけあります。`memory.md`（学習ログ）です。state と audit がツール任せなのに対し、memory.md だけはコンダクターが判断を自分で書き留める唯一のファイルです。この対比は別記事「[学習ループ](https://qiita.com/takeshishimada/items/dd7f3d034ee2c137cff5)」で扱います。
 
 ---
 
@@ -147,7 +147,7 @@ flowchart TD
     fin["セッション終了<br/>(SessionEnd hook)"] --> e1["SESSION_ENDED を発火<br/>※ワークフロー完了ではない"]
 ```
 
-**開始時。** `SessionStart` フックは、セッションの始まり方（source）をイベントに変換します。`startup` と `clear` は `SESSION_STARTED`、`resume` は `SESSION_RESUMED`。ただし `compact`（コンパクション後の再開）では **何も発火しません**。コンパクション自体は直前に別フックが記録済みで、二重に記録すると履歴が濁るからです。さらにこのフックは状態ファイルを読み、現在のフェーズ・ステージ・ステータス・次のアクションをコンダクターへ文脈として注入し、再開を助けます。状態ファイルが無ければ（＝進行中のワークフローが無ければ）何もしません。
+**開始時。** `SessionStart` フックは、セッションの始まり方（source）をイベントに変換します。`startup` と `clear` は `SESSION_STARTED`、`resume` は `SESSION_RESUMED`。ただし `compact`（コンパクション後の再開）では **何も発火しません**。コンパクション自体は直前に別フックが記録済みで、二重に記録すると履歴が濁るからです。さらにこのフックは状態ファイルを読み、現在のフェーズ・ステージ・ステータス・次のアクションをコンダクターへ文脈として注入し、再開を助けます。状態ファイルが無いとき、つまり進行中のワークフローが無いときは何もしません。
 
 **コンパクション直前。** `PreCompact` フックが状態ファイルの妥当性を確かめます。必須節（`## Stage Progress` と `## Current Status`）がそろっているかを検証し、`.aidlc-recovery.md` というパンくずを書き残し、`SESSION_COMPACTED`（現在ステージと妥当性の判定つき）を発火します。圧縮で文脈が失われる直前に、現在地のスナップショットが壊れていないかを点検する仕組みです。
 
@@ -178,16 +178,16 @@ state と audit は、性質が正反対です。
 
 | ファイル | 内容 |
 | --- | --- |
-| [`core/knowledge/aidlc-shared/state-template.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-shared/state-template.md) | 状態ファイルの構造。State Version=7、9つの節、Phase Progress の4状態、Stage Progress の6状態記法、Session Resume Point |
-| [`core/knowledge/aidlc-shared/audit-format.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-shared/audit-format.md) | 監査イベントのタクソノミー。「74 events / 19 categories」の Event Registry、`SUBJECT_PAST_VERB` 命名規約、各イベントの発火元、追記専用・逐語の原則 |
-| [`core/tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-state.ts) | 状態の読み書きと遷移（`advance`/`approve`/`reject`/`skip`/`complete-workflow` など）。`VALID_CHECKBOX_STATES`（6状態）、遷移と同時の監査発火 |
-| [`core/tools/aidlc-audit.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-audit.ts) | 監査ログの追記。`VALID_EVENT_TYPES`（74種）による未登録イベントの拒否、追記専用、CR/LF エスケープ |
-| [`core/hooks/aidlc-session-start.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/hooks/aidlc-session-start.ts) | セッション開始フック。source→`SESSION_STARTED`/`SESSION_RESUMED` 変換（compact は発火しない）、状態ファイルの文脈注入 |
-| [`core/hooks/aidlc-validate-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/hooks/aidlc-validate-state.ts) | PreCompact フック。状態ファイルの妥当性検証、`.aidlc-recovery.md` パンくず、`SESSION_COMPACTED` 発火 |
-| [`core/hooks/aidlc-session-end.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/hooks/aidlc-session-end.ts) | SessionEnd フック。`SESSION_ENDED` 発火（ワークフロー完了とは独立な観測用） |
-| [`core/hooks/aidlc-audit-logger.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/hooks/aidlc-audit-logger.ts) | PostToolUse フック。記録ディレクトリ（`<record>/`）への書き込みを `ARTIFACT_CREATED`/`ARTIFACT_UPDATED` として発火 |
-| [`core/hooks/aidlc-mint-presence.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/hooks/aidlc-mint-presence.ts) | UserPromptSubmit フック。`HUMAN_TURN` の発火。プロンプト本文は読まない（人が操作したかだけが問題）、状態ファイルが無ければ何も書かない、失敗しても人のターンを止めない |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | §4 State Tracking。コンダクター側の手順、「Event emission is tool-owned」（監査追記はツール任せ） |
+| [`core/knowledge/aidlc-shared/state-template.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/knowledge/aidlc-shared/state-template.md) | 状態ファイルの構造。State Version=7、9つの節、Phase Progress の4状態、Stage Progress の6状態記法、Session Resume Point |
+| [`core/knowledge/aidlc-shared/audit-format.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/knowledge/aidlc-shared/audit-format.md) | 監査イベントのタクソノミー。「74 events / 19 categories」の Event Registry、`SUBJECT_PAST_VERB` 命名規約、各イベントの発火元、追記専用・逐語の原則 |
+| [`core/tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-state.ts) | 状態の読み書きと遷移（`advance`/`approve`/`reject`/`skip`/`complete-workflow` など）。`VALID_CHECKBOX_STATES`（6状態）、遷移と同時の監査発火 |
+| [`core/tools/aidlc-audit.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-audit.ts) | 監査ログの追記。`VALID_EVENT_TYPES`（74種）による未登録イベントの拒否、追記専用、CR/LF エスケープ |
+| [`core/hooks/aidlc-session-start.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/hooks/aidlc-session-start.ts) | セッション開始フック。source→`SESSION_STARTED`/`SESSION_RESUMED` 変換（compact は発火しない）、状態ファイルの文脈注入 |
+| [`core/hooks/aidlc-validate-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/hooks/aidlc-validate-state.ts) | PreCompact フック。状態ファイルの妥当性検証、`.aidlc-recovery.md` パンくず、`SESSION_COMPACTED` 発火 |
+| [`core/hooks/aidlc-session-end.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/hooks/aidlc-session-end.ts) | SessionEnd フック。`SESSION_ENDED` 発火（ワークフロー完了とは独立な観測用） |
+| [`core/hooks/aidlc-audit-logger.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/hooks/aidlc-audit-logger.ts) | PostToolUse フック。記録ディレクトリ（`<record>/`）への書き込みを `ARTIFACT_CREATED`/`ARTIFACT_UPDATED` として発火 |
+| [`core/hooks/aidlc-mint-presence.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/hooks/aidlc-mint-presence.ts) | UserPromptSubmit フック。`HUMAN_TURN` の発火。プロンプト本文は読まない（人が操作したかだけが問題）、状態ファイルが無ければ何も書かない、失敗しても人のターンを止めない |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/protocols/stage-protocol.md) | §4 State Tracking。コンダクター側の手順、「Event emission is tool-owned」（監査追記はツール任せ） |
 
 ---
 

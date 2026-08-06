@@ -19,7 +19,7 @@ agreed_posting_campaign_term: false
 >
 > **シリーズ** — 本記事は [AIで紐解くAI-DLC v2](https://qiita.com/takeshishimada/items/2daa87896110603252ad) シリーズの一部です。
 >
-> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 3 日時点のコミット `046a9a6c`（AIDLC_VERSION 2.5.36、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
+> **参照した版** — **Claude Code 実装**を対象に、2026 年 8 月 4 日時点のコミット `c73ee984`（AIDLC_VERSION 2.5.37、`core/`）を参照しています。Claude Code 以外の実装（Kiro CLI／Kiro IDE／Codex CLI／opencode）は対象外で、記述が異なる場合があります。OSS 実装は更新が続いているため、最新の状態は公式リポジトリをご確認ください。
 
 ---
 
@@ -27,15 +27,15 @@ agreed_posting_campaign_term: false
 
 AI-DLC v2 の各機構は、ドキュメントや概念図のうえでは整然と動きます。けれど実装（`core/`）に踏み込むと、「助言にとどまり止めない検証」「型はあるがまだ発行されない指示」「コメントが実体に追いついていない箇所」といった段差が見えてきます。これらは欠陥の告発ではなく、速く動いている実装に注記・型・文書が追いつく途中の、いまの限界です。
 
-本記事は導入を検討する立場に向けて、各機構の仕組みそのものは個別記事に委ねたうえで、その「限界・注意点」の側面だけを出典つきで一望します。どこまでを仕様として頼れて、どこからが将来分なのか。煽らず誇張せず、ソースに当たって読み解きます。
+本記事は導入を検討する立場に向けて、各機構の仕組みそのものは個別記事に委ねたうえで、その「限界・注意点」の側面だけを出典つきで一望します。どこまでを仕様として頼れて、どこからが将来分なのか。誇張せず、ソースに当たって読み解きます。
 
 ## 助言どまりの検証と、止める承認ゲート
 
-「検証ゲートが自動でブロックする」という理解は、実装上は成り立ちません。成果物の中身を見て止められるのは人の承認ゲートだけで、それ以外の「検証」はすべて助言（advisory）です。
+「検証ゲートが自動で止める」という理解は、実装上は成り立ちません。成果物の中身を見て止められるのは人の承認ゲートだけで、それ以外の「検証」はすべて助言（advisory）です。
 
 ### 止めないセンサー
 
-センサー5本は、すべて `default_severity: advisory` です。発火フックは常に exit 0 を返す契約で（`aidlc-sensor-fire.ts`「always exit 0」）、不正な入力もファイル不在も静かに通します。コメント自身が「Blocking semantics defer to the future ralph driver」と書くとおり、ブロック機構はそもそも未実装で、将来のドライバ実装に委ねられています。
+センサー5本は、すべて `default_severity: advisory` です。発火フックは常に exit 0 を返す契約で（`aidlc-sensor-fire.ts`「always exit 0」）、不正な入力もファイル不在も静かに通します。コメント自身が「Blocking semantics defer to the future ralph driver」と書くとおり、止める機構はそもそも未実装で、将来の実装に委ねられています。
 
 判定ロジックも、不確かなものは PASSED と判定します。真理値表（`aidlc-sensor.ts` のコメント）は8行あり（`a`/`0`/`b`/`c`/`d`/`e`/`f`/`default`）、最後の `default` は「到達しないはず（should be unreachable）」と注記された安全網です。実際に到達する7行のうち、FAILED になるのは1行だけ ―「スクリプトが正常終了（exit 0）し、かつ `pass === false`」のとき（`c`）です。タイムアウト超過（`a`）は FAILED ではなく第3の結果 `BUDGET_OVERRIDE` になり、spawn 失敗・ツール不在（exit 127）・不正 JSON・想定外の終了コードは、すべて PASSED と判定されます（「Sensor outcomes are advisory」）。
 
@@ -53,7 +53,7 @@ CI やパイプラインに「自動で落ちる門」を期待してこの仕�
 
 ### 助言ではないが、門でもないもの
 
-ここで一つ、逆向きの誤読も避けておきます。「すべて助言」と書きましたが、**完了を機械的に拒む仕組みは複数あります**。宣言した成果物がディスクに無い、人がそのターンで操作していない、起動されたはずの協働者の記録が無い、宣言されたレビューが走った記録が無い、作業単位ごとに回るステージで未着手の単位が残っている、コード生成のステージで実装の痕跡が残っていない——いずれの場合も、ステージは完了できません。
+ここで一つ、逆向きの誤読も避けておきます。「すべて助言」と書きましたが、**完了を機械的に拒む仕組みは複数あります**。宣言した成果物がディスクに無い、人がそのターンで操作していない、起動されたはずの協働者の記録が無い、宣言されたレビューが走った記録が無い、作業単位ごとに回るステージで未着手の単位が残っている、コード生成のステージで実装の痕跡が残っていない。いずれの場合も、ステージは完了できません。
 
 ただしこれらは**品質を判定していません**。要求しているのは証拠の存在だけです。レビューの記録を求める仕組みを例に取ると、必要なのは「新しい判定があること」で、判定の中身は問われません。**NOT-READY でも完了できます。**
 
@@ -65,16 +65,16 @@ CI やパイプラインに「自動で落ちる門」を期待してこの仕�
 
 進行エンジンが次の一手として返す指示（directive）は、判別共用体（種類をタグで見分ける型）として**10種**定義されています。このうちエンジンが実際に発行するのは8種です。`load-steering`（ルール本文の配送）/ `run-stage` / `invoke-swarm` / `ask` / `print` / `error` / `done` の7種に、長尺のワークフローをステージ境界で一時停止する終端指示 `parked` が加わります。残る `dispatch-subagent` と `present-gate` の2種は、型としてはあるが発行されません。コメント自身が「`present-gate` and `dispatch-subagent` — arrive in later waves; this handler … cleanly omits those two」と書きます（`aidlc-orchestrate.ts`）。
 
-設計上の「予約」と、未実装は別物です。この2種は将来の波（later waves）に向けた予約スロットで、型に枠を確保しておけば、後で発行を足すときにスキーマを広げずに済みます。読む側としては、型にあるからといって「使える」と前提にしないのが安全です。指示の全体像は別記事「[進行の中核](https://qiita.com/takeshishimada/items/c3ac7c2223e5c7020d82)」で扱います。
+設計上の「予約」と、未実装は別物です。この2種は後続の段階（later waves）に向けた予約で、型に枠を確保しておけば、後で発行を足すときにスキーマを広げずに済みます。読む側としては、型にあるからといって「使える」と前提にしないのが安全です。指示の全体像は別記事「[進行の中核](https://qiita.com/takeshishimada/items/c3ac7c2223e5c7020d82)」で扱います。
 
 ## コメントと実体のドリフト
 
 ソースのコメントや散文が、同じ `core/` 内の実体とズレている箇所があります。ここでは公式 docs を片側に使わず、`core/` 内で完結する食い違い（コード対コード、散文対集計）だけを集めました。
 
-| ドリフト | コメント／散文の主張 | 実体（2026 年 8 月 3 日時点） | 出典 |
+| ドリフト | コメント／散文の主張 | 実体（2026 年 8 月 4 日時点） | 出典 |
 |---|---|---|---|
-| ステージ数 | docstring が一貫して「31 stage files」 | ステージ定義は32本 | `aidlc-graph.ts` の `compileStageGraph` docstring ほか 対 `stages/**` 実数え |
-| 全ステージ実行スコープ | enterprise が「全32を実行する唯一のスコープ」 | feature も全32を実行。散文どうしが矛盾 | `scopes/aidlc-enterprise.md` 対 `aidlc-feature.md` 対フロントマター集計 |
+| ステージ数 | docstring が一貫して「31 stage files」 | ステージ定義は32本 | `aidlc-graph.ts` の `compileStageGraph` docstring ほか 対 `stages/**` の実際の本数 |
+| 全ステージ実行スコープ | enterprise が「全32を実行する唯一のスコープ」 | feature も全32を実行。散文どうしが矛盾 | `scopes/aidlc-enterprise.md` 対 `aidlc-feature.md` 対 フロントマター集計 |
 | 学習の反映時点 | §13 が「次にステージが走るとき、解決済みのルールと束ねたセンサーが**コンパイルで**読み込まれる」とルールとセンサーをまとめて書く | ルールの本文はステージに入るたびにディスクから読み直される（`readRuleBundle`）。コンパイルを要するのはセンサーの束ねだけ | `stage-protocol.md` §13 対 `aidlc-steering.ts`／`aidlc-orchestrate.ts` |
 | `PHASE_VERIFIED` の必須項目 | 監査フォーマットの規約が必須項目を「時刻・フェーズ境界・合否・指摘」と定義 | コードが出すのはフェーズ境界だけ。合否と指摘のフィールドは存在しない | `audit-format.md` 対 `aidlc-state.ts` |
 | ルール解決チェーン | 利用ガイドと導入テンプレートが「5層（`org → team → project → phase → stage`）」と記述 | コードは `org → team → project → phase` の4層で、`stage` 層は予約のみ・実体なし | `rules-reading.md` / `templates/onboarding.md` 対 `aidlc-graph.ts`（`SCOPE_PRIORITY`） |
@@ -109,17 +109,17 @@ CI やパイプラインに「自動で落ちる門」を期待してこの仕�
 
 | ファイル | 内容 |
 |---|---|
-| [`core/sensors/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/sensors) | センサー5本。すべて `default_severity: advisory` |
-| [`core/hooks/aidlc-sensor-fire.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/hooks/aidlc-sensor-fire.ts) | 発火フック。「always exit 0」「Blocking … defer to the future ralph driver」 |
-| [`core/tools/aidlc-sensor.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-sensor.ts) | 判定の真理値表（8行・到達7行）。FAILED は1行のみ、他は PASSED。「Sensor outcomes are advisory」 |
-| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/aidlc-common/protocols/stage-protocol.md) | 中身を見て止められるのは承認ゲートのみ、§12a レビュアーは「Does not block」、§13 学習ゲートは「it never blocks the gate」 |
-| [`core/tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-state.ts) | `PHASE_VERIFIED` をフェーズ境界で無条件発行、合否フィールドなし |
-| [`core/tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-directive.ts) | 指示10種の判別共用体（`load-steering` と `parked` を含む） |
-| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-orchestrate.ts) | 発行8種と、omit する `dispatch-subagent` / `present-gate`（later waves） |
-| [`core/tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/tools/aidlc-graph.ts) | docstring が「31 stage files」（実体32）。`SCOPE_PRIORITY` の4層チェーン（`stage` 層なし） |
-| [`core/aidlc-common/stages/`](https://github.com/awslabs/aidlc-workflows/tree/046a9a6c/core/aidlc-common/stages) | ステージ定義の実体32本。各 `scopes:` フロントマターのスコープ別集計 |
-| [`core/scopes/aidlc-enterprise.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/scopes/aidlc-enterprise.md) / [`aidlc-feature.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/scopes/aidlc-feature.md) | 「enterprise が全32実行の唯一」対「feature も全32実行」の散文矛盾 |
-| [`core/knowledge/aidlc-shared/rules-reading.md`](https://github.com/awslabs/aidlc-workflows/blob/046a9a6c/core/knowledge/aidlc-shared/rules-reading.md) | 利用ガイドと `core/templates/onboarding.md` の「5層（…→stage）」記述（コードは4層） |
+| [`core/sensors/`](https://github.com/awslabs/aidlc-workflows/tree/c73ee984/core/sensors) | センサー5本。すべて `default_severity: advisory` |
+| [`core/hooks/aidlc-sensor-fire.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/hooks/aidlc-sensor-fire.ts) | 発火フック。「always exit 0」「Blocking … defer to the future ralph driver」 |
+| [`core/tools/aidlc-sensor.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-sensor.ts) | 判定の真理値表（8行・到達7行）。FAILED は1行のみ、他は PASSED。「Sensor outcomes are advisory」 |
+| [`core/aidlc-common/protocols/stage-protocol.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/aidlc-common/protocols/stage-protocol.md) | 中身を見て止められるのは承認ゲートのみ、§12a レビュアーは「Does not block」、§13 学習ゲートは「it never blocks the gate」 |
+| [`core/tools/aidlc-state.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-state.ts) | `PHASE_VERIFIED` をフェーズ境界で無条件発行、合否フィールドなし |
+| [`core/tools/aidlc-directive.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-directive.ts) | 指示10種の判別共用体（`load-steering` と `parked` を含む） |
+| [`core/tools/aidlc-orchestrate.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-orchestrate.ts) | 発行8種と、omit する `dispatch-subagent` / `present-gate`（later waves） |
+| [`core/tools/aidlc-graph.ts`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/tools/aidlc-graph.ts) | docstring が「31 stage files」（実体32）。`SCOPE_PRIORITY` の4層チェーン（`stage` 層なし） |
+| [`core/aidlc-common/stages/`](https://github.com/awslabs/aidlc-workflows/tree/c73ee984/core/aidlc-common/stages) | ステージ定義の実体32本。各 `scopes:` フロントマターのスコープ別集計 |
+| [`core/scopes/aidlc-enterprise.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/scopes/aidlc-enterprise.md) / [`aidlc-feature.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/scopes/aidlc-feature.md) | 「enterprise が全32実行の唯一」対「feature も全32実行」の散文矛盾 |
+| [`core/knowledge/aidlc-shared/rules-reading.md`](https://github.com/awslabs/aidlc-workflows/blob/c73ee984/core/knowledge/aidlc-shared/rules-reading.md) | 利用ガイドと `core/templates/onboarding.md` の「5層（…→stage）」記述（コードは4層） |
 
 ---
 
